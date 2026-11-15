@@ -167,6 +167,44 @@ def set_cell_text(cell, text, bold=False, color=None, size=9, font=BODY_FONT, al
     return p
 
 
+def set_cell_text_preserve(cell, text, keep_rpr=True):
+    """改写单元格文本，**保留首段首 run 的 rPr**（字体/字号/加粗不丢）。
+
+    与 `set_cell_text` 的区别：后者走 `cell.text = ""` + `add_rich_runs` 重建，
+    会按参数重设字体（用于生成期）；本函数用于**修订期**——改既有表格的单元格
+    内容时不能把原有排版冲掉。
+
+    其余段全部删除（一个单元格只留一段）。
+
+    修订期的跨 run 替换请用 `docx_revise_toolkit.replace_in_cell`。
+    """
+    ps = cell.paragraphs
+    if not ps:
+        p = cell.add_paragraph()
+        ps = [p]
+    first = ps[0]
+    if keep_rpr:
+        runs = first._p.findall(qn('w:r'))
+        if runs:
+            t = runs[0].find(qn('w:t'))
+            if t is None:
+                t = runs[0].makeelement(qn('w:t'), {})
+                runs[0].append(t)
+            t.text = text
+            t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+            for r in runs[1:]:
+                for tt in r.findall(qn('w:t')):
+                    tt.text = ''
+                    tt.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+        else:
+            first.add_run(text)
+    else:
+        first.text = text
+    for p in ps[1:]:
+        p._p.getparent().remove(p._p)
+    return first
+
+
 # =====================================================================
 # 标题 / 段落 / 列表
 # =====================================================================
@@ -195,6 +233,22 @@ def add_h2(doc, text):
     p = doc.add_heading(level=2)
     r = p.add_run(text); set_cjk(r, CN_FONT)
     r.font.size = Pt(12.5); r.font.bold = True; r.font.color.rgb = NAVY
+    return p
+
+
+def add_h1_page(doc, text):
+    """一级标题 + **段前分页**（章节起新页）。
+
+    **不要用裸 `doc.add_page_break()`**：分页符落在页底时会造出整页空白。
+    段前分页（`page_break_before`）由 Word 在段落属性上处理，不会产生空页。
+
+    修订期若要给**既有**标题段加段前分页，直接设
+    `p.paragraph_format.page_break_before = True`，不要重建成新段。
+    """
+    p = doc.add_heading(level=1)
+    p.paragraph_format.page_break_before = True
+    r = p.add_run(text); set_cjk(r, CN_FONT)
+    r.font.size = Pt(15); r.font.bold = True; r.font.color.rgb = NAVY
     return p
 
 

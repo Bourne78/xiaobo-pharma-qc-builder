@@ -341,6 +341,27 @@ def replace_in(p_el, old, new):
 > 统一为版心满宽 + 左对齐后复核纯文本零变化。
 ---
 
+## 12. 连续流式排版（去除强制换页，消除章节间空白）
+
+成稿常因两类强制换页产生大量空白、总页数偏多：
+  - 卡间分页：操作卡标题之间的空段落内嵌 run 级 `w:br type="page"`（模板 `doc.add_page_break()` 把每张卡逼到新页）；
+  - 章节分页：Heading 1 标题的 `w:pageBreakBefore`（模板 `add_h1_page()` 让每章从新页起）。
+
+识别与处理（跨品种，按文档实际结构，不写死品种文本）：
+  - 删全部 `w:br type="page"`、删全部 H1 的 `w:pageBreakBefore` → 整本连续顺排；
+  - 卡间空段落注入浅灰细下边框分隔线（轻量视觉分界，不占满页）；
+  - 安全网：三类块表格（主卡表 / SOP 框 / 关键点框）加 `cantSplit`（防红框拆页），
+    操作卡标题 + H1 加 `keep_with_next`（防标题落页底孤行）。
+
+工具：`scripts/fix_flow_layout.py --doc --out --card-pattern --dry-run`
+  - 带 `--selftest`（最小文档端到端断言：两类换页移除 + 卡间分隔线注入 + 三类块 cantSplit + H1 无残留）；
+  - 四组 `--no-*` 开关（`--no-card-pagebreaks` / `--no-chapter-pagebreaks` / `--no-separator-line` / `--no-safety`）控制去哪些换页、是否加分隔线/安全网；
+  - 纯版式改动，不碰任何文本 —— 交付前纯文本比对（或 `verify_revision.py`）确认零内容损失。
+
+> 经验来源（算例，非默认常量）：某品种 v7 含 27 处强制换页（14 卡间 + 13 章节），去除后总页明显压缩、卡间改浅灰分隔线，纯文本零变化。
+
+---
+
 # 第二层 · 品种专项决策（勿通用化）
 
 以下均为**某一次手册的当次决定**，记录供理解上下文，不得写成跨品种默认结构。

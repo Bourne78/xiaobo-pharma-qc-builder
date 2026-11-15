@@ -32,6 +32,11 @@ Stage 6 的操作手册。`SKILL.md` Stage 0~5 讲「从零散 QC 源文件从�
 1. `items` 单一数据源不变：矩阵永远由物料 `items` 字段派生，绝不手写第二份清单。
 2. 历史记述不就地改写：旧版增量说明、版本沿革表旧行只在升版时**新增**一节/一行。
 3. 正式升版用**新文件名**，不覆盖上一版成品。
+4. **冗长章节优先「搬表」而非「删表」**：用户判定某章冗长时，先量化各小节体量
+   （字符数 / 表数，用 `scripts/chapter_volume.py`）。纯文字精简上限约 8~25%，
+   体量通常集中在大明细表。把明细表整体迁入新增附录（**表内一字不删**）、
+   原章只留结论与指针，是唯一能一次减 50% 以上且零事实损失的手法。
+   决策树与操作细节见 `chapter_refactor_playbook.md` §1~§2。
 
 **写回安全**：
 
@@ -139,6 +144,13 @@ B-xx 就地更正 + ★高待 QA。
 
 ## 5. 章节合并与重编号（可复制代码清单）
 
+> 本节保留「手写代码」路径，适用于一次性、非标结构的改动。
+> **config 驱动的章节重构**（合并 / 重编号 / 删除 / 迁表 / 压缩 / 尾部修复 / 升版）
+> 见 `chapter_refactor_playbook.md` §7 与 `scripts/refactor_chapter.py`；
+> 通用定位与保格式写入原语见 `scripts/docx_revise_toolkit.py`。
+> 两条路径共用同一批硬约束（style.name 定位、跨 run 改写、降序重编号、
+> 迁表先表后说明、禁硬编码表索引）——见 `chapter_refactor_playbook.md` §3~§4。
+
 章节结构改动**登记为品种级决定**（见 §11），主结构模板不因此改写。技术上是三件事：
 
 **① 标题锚定定位**：表格搬移会让 `doc.tables[i]` 索引整体前移，一律按标题文本定位，  
@@ -239,6 +251,32 @@ def replace_in(p_el, old, new):
   「PDF 需用户在 Word 手动导出、逐页目视待补」。**不得把结构级通过表述为版式已验收**。  
   脚本不内嵌 COM 导出、不内嵌 PDF 渲染；`--pdf` 仅对既存 PDF 文本层做可选断言，缺则 SKIP。
 
+**尾部结构完整性（合并 / 升版后的出口契约，硬断言）**：
+
+- 结尾标记（如「—— 本手册完 ——」）必须**独立成段**（不能粘在 bullet 末尾），
+  且全文**仅 1 处**；
+- 增量说明节不得**错挂**别节条目；「概述型」增量说明（标题下应有 Normal 概述段）
+  必须有概述段；
+- 带编号的条目不得**跨小节错挂**（其编号不得大于上方最近的小节标题编号）；
+- **增量说明节的编号不得与现存标题重复**——重编号把 6.11 改成 6.10 后，
+  新增说明应接 6.11；runner 在插入前做冲突预检。
+
+> 依据与实现：`chapter_refactor_playbook.md` §5；
+> config 字段见 `verify_revision.py` 的 `tail_integrity` 段（缺省 SKIP，不 FAIL）。
+
+**baseline 逐格比对的两种模式（迁表/删节后必须能正确降级）**：
+
+| 情况 | 判定方式 |
+|---|---|
+| 两版**表头序列相同**（表序未变） | 索引式逐格比对（老行为，逐字不变） |
+| 表头序列**不同**（表序已变） | 自动降级为**表内容指纹多重集合**比对 |
+
+表级白名单用 config 的 `allowed_table_changes`（按表头关键字声明「这张表本轮允许改」），
+并对白名单表做**正向断言**：只许末尾追加、旧行必须逐格保留。
+单元格局部白名单仍用 `allowed_cells`（精确键）/ `allowed_cell_patterns`（描述式）。
+
+> 依据与实现：`chapter_refactor_playbook.md` §8.5。
+
 **需人工目视项**（写进交付说明，不假装自动化）：逐页无溢出/截断/乱码/豆腐块、  
 横向页右边界在页内、红框不跨页撕裂、无孤立红框页、封面/页眉/沿革表/增量说明的版本号与日期一致、  
 供应商多写法「待核对」标注是否恰当。
@@ -273,15 +311,47 @@ def replace_in(p_el, old, new):
 | 旧 `.doc` | Word COM `Documents.Open → Content.Text` 写 UTF-8 txt（勿 SaveAs2）+ `replace("\x07"," ")` | §12                           |
 | COM 导出   | 按环境分支：可用则 `export_pdf.ps1` + `Fields.Update()`；被拦截则手动导出                                | §10 / §10b / §12              |
 
+
+## 11. 操作卡三类块版式统一（视觉一致性硬约束）
+
+逐项操作卡（第 3 章）每张卡由三类块构成，必须**等宽、对齐一致、铺满版心**：
+  - 主操作卡表（2 列：方法要点 / 操作步骤 … / 关键物料速查）
+  - SOP 引用框（单格浅蓝底 F2F6FB + 左竖线 1F3A5F）
+  - 关键点框（单格浅红底 FBE4E4 + 红色左竖线 C00000）
+一旦任一块偏窄、或卡表居中而另两者靠左，视觉上就会出现「对齐方式都不一样 / 没铺开」。
+
+识别依据（跨品种模板固定生成特征，见 `docx_table_toolkit.py` 的
+`add_key_callout` / `add_sop_quote_block` / 主卡表手写模板，**非品种专用**）：
+  - 主卡表  ：cols==2 且 首列文本含「方法要点」/「操作步骤」/「关键物料速查」
+  - SOP 框   ：cols==1 且 单元格左竖线色 == 1F3A5F
+  - 关键点框 ：cols==1 且 单元格左竖线色 == C00000
+  - 其余表（附录 / 产品信息 / 矩阵 / 普通表）一律不动。
+
+校正动作（统一版心满宽 + 对齐）：
+  - 三类块 `tblW` → 版心宽（纵向 17.0cm=9639tw / 横向 25.7cm=14570tw）、`w:type=dxa`、固定布局；
+  - 主卡表两列按**原比例**缩放（以文档实际列宽为基准，不要写死 2.42:10.2）；单列表列宽 = 版心；
+  - 表级 `w:jc=left`；单元格 `vAlign=center`、段落 `jc=left`；
+  - **只动三类块**，附录/产品/矩阵表零改动。
+
+工具：`scripts/fix_operation_card_blocks.py --doc --out --content-width-cm --dry-run`
+  - 带 `--selftest`（构造最小文档端到端断言：三类块被正确识别 + 宽度设满 + 附录/普通表零误伤）；
+  - 运行时**纯版式改动**，不触碰任何单元格文本 —— 交付前用纯文本比对（或 `verify_revision.py`）确认零内容损失。
+
+> 经验来源（算例，非默认常量）：某品种 v7 巡检发现三类块宽度 8.02 / 10.2 / 12.62cm 且卡表居中、另两者靠左；
+> 统一为版心满宽 + 左对齐后复核纯文本零变化。
 ---
 
 # 第二层 · 品种专项决策（勿通用化）
 
 以下均为**某一次手册的当次决定**，记录供理解上下文，不得写成跨品种默认结构。
 
+> **完整实战复盘（含六类动作的逐条落地、实测 config、升版机制与已知债务）** 见
+> `references/case_study_gsc_v6.md`。本文只保留「不得通用化」的品种决定清单。
 
-- 骨化三醇注射液 v5→v6 的六类动作：物料溯源补录 / 表格字体统一 / 章节整合 /
-  矩阵可读化 / 矩阵精简 / 零回归验收。
+
+- **骨化三醇注射液 v5→v6**（一次 Stage 6 修订）的六类动作：物料溯源补录 / 表格字体统一 /
+  章节整合 / 矩阵可读化 / 矩阵精简 / 零回归验收 —— 完整过程与映射见
+  `references/case_study_gsc_v6.md`。
 - **F.3 是「附录 G 顺延为 F」后的品种编号**；其他品种可能是 G.4 或别的编号。
 - **删「供试品与样品制备（SMP-）」列**是当次「矩阵精简」决策；六类物料模型与供试品表
   本身完好保留，技能模板不删类。
@@ -310,12 +380,13 @@ def replace_in(p_el, old, new):
 | §2 列宽 | `python_docx_pitfalls.md` §1~§4；`materials_data_model.md` §7 |
 | §3 字体 | `python_docx_pitfalls.md` §5；`manual_structure.md` §5 |
 | §4 批号 / 效力 | `ocr_pipeline.md` §9；`manual_structure.md` §3；`case_callout_patterns.md` §四 |
-| §5 章节改写 | `python_docx_pitfalls.md` §3 / §6 |
+| §5 章节改写 | `python_docx_pitfalls.md` §3 / §6；**config 驱动版本见 `chapter_refactor_playbook.md` §7 / `scripts/refactor_chapter.py`** |
 | §6 矩阵 | `materials_data_model.md` §5；`SKILL.md` Stage 3 |
 | §7 版式 | `python_docx_pitfalls.md` §4；`manual_structure.md` §5 |
-| §8 验收 | `manual_structure.md` §7；`python_docx_pitfalls.md` §8 |
+| §8 验收 | `manual_structure.md` §7；`python_docx_pitfalls.md` §8；**尾部完整性见 `chapter_refactor_playbook.md` §5** |
 | §9 升版 | `python_docx_pitfalls.md` §9 / §10 |
 | §10 环境 | `python_docx_pitfalls.md` §12；`ocr_pipeline.md` §9 |
+| §1 冗长章节 | **`chapter_refactor_playbook.md` §1（体量决策树）/ §2（搬表通则）** |
 
 ## 附录 B 交付收尾提醒话术模板
 

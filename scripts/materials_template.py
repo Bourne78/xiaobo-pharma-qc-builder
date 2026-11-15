@@ -184,28 +184,52 @@ MATRIX_CAT_HEADERS = ["对照品与工作对照品（RP-）", "试剂、试液�
 MATRIX_CAT_SHORT = MATRIX_CAT_HEADERS
 
 
-def build_matrix(cats=None, legacy=False):
+def _material_label(m, cell_mode):
+    """按 cell_mode 生成单条物料的单元格标签。"""
+    if cell_mode == "code":
+        return m["id"]                          # 纯编号（旧稿极简口径）
+    if cell_mode == "name_code":
+        return "%s（%s）" % (m["name"], m["id"])  # 完整名称（编号）——默认可读化
+    if cell_mode == "legacy":
+        return "%s %s" % (m["name"], m["id"])     # 名称 空格 编号（旧稿兼容）
+    if cell_mode == "name_spec":
+        # 名称 + 规格/关键属性：对应明细总表第 1 列「名称 / 规格 / 关键属性」整格。
+        # spec 为 NEED 时不追加（避免「需查」噪声覆盖名称信息），其余以「 / 」拼接。
+        spec = (m.get("spec") or "").strip()
+        return "%s / %s" % (m["name"], spec) if spec and spec != NEED else m["name"]
+    raise ValueError("未知 cell_mode: %r" % cell_mode)
+
+
+def build_matrix(cats=None, legacy=False, cell_mode=None):
     """返回 {手册卡号: [各类别的物料串]}。单一数据源仍是 MATERIALS[cat] 的 items 字段。
 
-    默认（成品可读化口径）：每个物料写作「完整名称（编号）」，同类多个用顿号「、」连接，
-    无物料填「—」；列头请用 MATRIX_CAT_HEADERS（中文全称（缩写））。
+    cell_mode（新增，优先于 legacy）控制每格怎么写一条物料：
+      - "name_code"（默认）：完整名称（编号），同类多个顿号「、」连接
+      - "name_spec"：名称 / 规格关键属性，**每条独立成行（\\n = 单元格内 w:br）**；
+                     对应「把物料明细总表第 1 列嵌进矩阵、取消代号」口径
+      - "code"：仅编号（极简）
+      - "legacy"：旧「名称 编号 + 换行」
+    legacy=True 是 cell_mode="legacy" 的兼容别名。
+
     cats: 可裁剪的类别列表，默认 MATRIX_CATS；去掉某类即少一列。
-    legacy=True: 保留旧「名称 编号 + 换行」格式，仅供旧稿兼容。
+    写回 DOCX 时，含 \\n 的单元格串须用 docx_revise_toolkit.set_cell_multiline
+    逐行写入（每条一个 w:br、保留首 run rPr），不要用 cell.text=。
     详见 references/revision_playbook.md §6。
     """
+    if cell_mode is None:
+        cell_mode = "legacy" if legacy else "name_code"
     cats = MATRIX_CATS if cats is None else cats
     out = {}
     for card in CARD_SOP_MAP:
         row = []
         for cat in cats:
             hit = [m for m in MATERIALS.get(cat, []) if card in m["items"]]
-            if legacy:
-                names = ["%s %s" % (m["name"], m["id"]) for m in hit]
-                sep = "\n"
-            else:
-                names = ["%s（%s）" % (m["name"], m["id"]) for m in hit]
+            labels = [_material_label(m, cell_mode) for m in hit]
+            if cell_mode == "name_code":
                 sep = "、"
-            row.append(sep.join(names) if names else "—")
+            else:
+                sep = "\n"   # name_spec / legacy / code 均逐条成行
+            row.append(sep.join(labels) if labels else "—")
         out[card] = row
     return out
 

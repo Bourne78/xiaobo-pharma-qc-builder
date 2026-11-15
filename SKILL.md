@@ -1,6 +1,6 @@
 ---
 name: xiaobo-pharma-qc-builder
-description: "This skill should be used when generating, structuring, or maintaining Chinese pharmaceutical QC inspection preparation manuals (药品检验手册 / 全项检验准备与关键点控制手册) from QC source documents such as SOPs, method validation reports, drug standards (质量标准), and certificate-of-analysis files. It covers the full pipeline: OCR extraction of scanned Chinese PDFs, python-docx document assembly across multiple stages (one-page overview, per-test operation cards, in-place SOP quoting, appendix material/BOM checklists), fixed-layout table rendering with correct OOXML ordering, header/footer injection (PAGE/NUMPAGES fields), per-test 关键点/易错点 callouts with auto line-splitting on circled numbers (①②③…), folding real 偏差/OOS/CAPA cases into callouts (de-identified), and the domain-specific data model for an inspection material list (检验物料清单 / 备料核对清单) with auto-derived 检验项×物料 matrix. It also covers Stage 6 post-generation revision of an already-delivered manual: content-based column resizing, table font normalization, batch-record lot/supplier backfill, chapter merging/renumbering, readable 检验项×物料 matrices, three-layer zero-regression verification, and formal version release with version/date reminders. Trigger on phrases like 检验手册, 检验物料清单, 备料核对清单, SOP 嵌入手册, QC 文件梳理, 偏差案例挂接, 关键点框, 页眉页脚, 成稿修订, 修订升版, 列宽重算, 批号回填, 供应商回填, 矩阵全名, 版本沿革, 增量说明, 零回归验收, or requests to build or revise inspection-ready manuals for injectables or other drug products from scattered QC docs."
+description: "This skill should be used when generating, structuring, or maintaining Chinese pharmaceutical QC inspection preparation manuals (药品检验手册 / 全项检验准备与关键点控制手册) from QC source documents such as SOPs, method validation reports, drug standards (质量标准), and certificate-of-analysis files. It covers the full pipeline: OCR extraction of scanned Chinese PDFs, python-docx document assembly across multiple stages (one-page overview, per-test operation cards, in-place SOP quoting, appendix material/BOM checklists), fixed-layout table rendering with correct OOXML ordering, header/footer injection (PAGE/NUMPAGES fields), per-test 关键点/易错点 callouts with auto line-splitting on circled numbers (①②③…), folding real 偏差/OOS/CAPA cases into callouts (de-identified), and the domain-specific data model for an inspection material list (检验物料清单 / 备料核对清单) with auto-derived 检验项×物料 matrix. It also covers Stage 6 post-generation revision of an already-delivered manual: content-based column resizing, table font normalization, batch-record lot/supplier backfill, chapter merging/renumbering, readable 检验项×物料 matrices, three-layer zero-regression verification, and formal version release with version/date reminders. Trigger on phrases like 检验手册, 检验物料清单, 备料核对清单, SOP 嵌入手册, QC 文件梳理, 偏差案例挂接, 关键点框, 页眉页脚, 成稿修订, 修订升版, 列宽重算, 批号回填, 供应商回填, 矩阵全名, 版本沿革, 增量说明, 零回归验收, or requests to build or revise inspection-ready manuals for injectables or other drug products from scattered QC docs. It also covers Stage-6 chapter refactoring on an existing manual: quantifying section volume before trimming, the 「搬表而非删表」(move-the-table-don't-delete-the-table) rule (relocate detail tables into a new appendix verbatim and leave only conclusions plus pointers in the chapter), subsection merge / renumber / delete driven by a JSON config, cross-reference rewriting after relocation, tail-structure integrity assertions (the incremental-notes section must not carry another section's items; the closing marker must stand alone and appear exactly once), and user-intent-to-action mapping (rollback / merge-two-sections / trim-a-verbose-chapter / open-for-me). Trigger on phrases like 章节精简, 章节重构, 冗长章节, 章节体量, 搬表, 明细表迁出, 章节合并确认, 小节重编号, 交叉引用改指, 增量说明错挂, 结尾标记粘连, 回退上一版, 章节点乱, 整理精简该章, in addition to 检验手册, 检验物料清单, 备料核对清单, SOP 嵌入手册, QC 文件梳理, 偏差案例挂接, 关键点框, 页眉页脚, 成稿修订, 修订升版, 列宽重算, 批号回填, 供应商回填, 矩阵全名, 版本沿革, 增量说明, 零回归验收."
 agent_created: true
 ---
 
@@ -18,6 +18,13 @@ The deliverable is typically a multi-stage Word manual for one drug product:
 0) 编制说明/溯源 → 1) 产品基本信息 → 2) 一页速览总览表(检验项清单) → 3) 逐项操作卡(每
 项一张，含🔴关键点框) → 4) 验证结论/限度摘要 → 5) 附录 A~G → 6) 参考文献与待核对项。
 Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
+
+**Validated across products.** The skill has been used end-to-end on multiple injectable
+products: 聚多卡醇注射液 (built from scratch, v1→v2), 骨化三醇注射液 (a full Stage 6
+revision v5→v6), and 注射用乳糖酸红霉素 (Stage 6 revision to v4). The 骨化三醇 v5→v6
+revision — six action classes (material source backfill / font normalization / chapter
+consolidation / matrix readability / matrix trimming / zero-regression verification) — is
+captured as a worked retrospective in `references/case_study_gsc_v6.md`.
 
 ## When To Use
 
@@ -101,7 +108,8 @@ Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
 ### Stage 6 — Revise an existing manual & release a new version
 - Applies to an already-delivered `.docx`; full SOP is `references/revision_playbook.md`
   (layer 1 = cross-product rules, layer 2 = product-specific decisions that must NOT be
-  generalized).
+  generalized). A complete worked example (骨化三醇注射液 v5→v6, six action classes with
+  real measured config) is `references/case_study_gsc_v6.md`.
 - Baseline & timestamped backup first; locate structures by **heading anchor**, never a
   cached table index; always write to a new `--output` file, never overwrite the input.
 - `scripts/patch_existing_manual.py` — `--strategy autofit|content-width` (content-width
@@ -116,6 +124,69 @@ Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
   in the filename**, listing every place that carries them and giving current + suggested
   values (today's `YYYYMMDD`). Reminding is not renaming — wait for confirmation. See
   `references/revision_playbook.md` §9 / 附录 B.
+- **Operation-card block visual consistency (user says the three card blocks look misaligned / not full-width)** — the per-test card bundles three blocks (main 2-column card table / SOP quote block / key-point red callout) that must share one width and alignment. Run `scripts/fix_operation_card_blocks.py --doc --out --content-width-cm` (17.0 portrait / 25.7 landscape) to normalize them to full text-width + left-aligned + vertically-centered cells; it identifies each block by template-fixed traits (red/blue left border, 2-column with 方法要点) so appendix/product/matrix tables are never touched. Always `--dry-run` first, then write a new `--output` (never overwrite input); confirm pure-text zero change. See `references/revision_playbook.md` §11.
+- **Chapter refactoring (user says a chapter is messy / verbose / too long)** — first
+  **quantify** each subsection's volume with `scripts/chapter_volume.py`; volume usually sits
+  in the big detail tables, so pure text trimming caps out around 8~25%. Preferred move:
+  **relocate the detail table into a new appendix verbatim** and leave only conclusions plus
+  a pointer in the original chapter — one pass, ~50%+ reduction, zero factual loss. After the
+  move, rewrite every cross-reference that still points at the old location, and assert the
+  table's dimensions are unchanged. Full SOP: `references/chapter_refactor_playbook.md` §1~§2;
+  runner: `scripts/refactor_chapter.py --config`.
+- **Matching hard rules** — never compare `Paragraph` objects with `is` (`doc.paragraphs`
+  returns fresh objects each access; compare `p._p`); never match on style **id** (real docs
+  use `'000006'` / `'21'` — always `p.style.name`); TOC entries share the chapter-title text
+  (TOC = `List Bullet`, body = `Heading 1`, disambiguate by `style.name`); subsection styles
+  are **not uniform** within one chapter — locate by text prefix, not by heading level;
+  numbering tokens and title text often live in **different runs** (and the space count
+  varies — `"6.2 "` vs `"6.5  "`), so match with `^\d+\.\d+` + `\s+`; table paragraphs are
+  **not** in `doc.paragraphs` (scan paragraphs + every table cell); **renumber strictly from
+  the largest number down**, and never map onto a number that already exists.
+- **Renumbering needs two phases** — descending order alone still self-collides (measured:
+  seven headings all collapsed into one number). Phase 1 rewrites every source number to a
+  collision-proof placeholder (`§§TMPn§§`), phase 2 swaps placeholders for the targets.
+- **Locator gotcha: naming a bullet style cancels the bullet filter** — `find_paragraphs`
+  must apply the style test **before** the "skip List Bullet" filter, otherwise
+  `style='List Bullet'` always returns empty and every template lookup (increment-notes
+  bullets, TOC anchors) silently yields `None`.
+- **`docx.table._Row(tr, parent)` needs a parent that has `.table`** — pass `tbl.rows`
+  (or the `Table`), never the bare `CT_Tbl`; otherwise `AttributeError: 'CT_Tbl' object
+  has no attribute 'table'`.
+- **Writing text** — always set `xml:space="preserve"` via the Clark form
+  (`{http://www.w3.org/XML/1998/namespace}space`; the literal `'xml:space'` raises
+  `ValueError: Invalid attribute name`); **never** use `cell.text =` (it drops `rPr` — use
+  `set_cell_text_preserve`); a whole-paragraph rewrite keeps only the first run's `rPr`.
+- **A whole-paragraph rewrite must never land on a heading** — that erases the section
+  title and breaks the numbering chain while the document still opens fine. Use the
+  `section_body` compress kind (rewrite the first non-bullet paragraph *under* a heading).
+- **"Configured but matched zero times" must raise** — a cross-reference rewrite that hits
+  nothing usually means the search string is wrong (full-width brackets, a sub-number that
+  does not exist, text split across runs). Silent zero hits leave stale pointers behind;
+  the runner aborts unless `allow_zero: true` is set explicitly.
+- **Never hard-code table indices** — locate the 版本沿革 table by its header keywords
+  (`版本 / 生效日期 / 修订内容 / 来源`); relocating a table shifts every later `doc.tables[i]`.
+- **Drift detection is stage-aware** — the table-content fingerprint multiset must not
+  change across a stage, except for tables the config explicitly names (`changelog_table`
+  in `release`, `kind='table_cell'` targets in `compress`); for those, assert
+  append-only (old rows preserved cell by cell).
+- **Tail integrity is a hard contract** — after any merge or version bump, the closing marker
+  (「—— 本手册完 ——」) must stand alone and appear exactly once, and an 增量说明 section must
+  not carry another section's items. A new 增量说明 section's number must not collide with an
+  existing heading (after a renumber, take max + 1). Assert it
+  (`verify_revision.py --config`'s `tail_integrity` block); absent config → SKIP, never FAIL.
+  See `references/chapter_refactor_playbook.md` §5.
+- **Baseline cell-by-cell comparison degrades gracefully** — when the table *order* changed
+  (a relocation or deletion happened), an index-based comparison produces false positives;
+  the verifier then switches to comparing the multiset of table content fingerprints.
+  Declare tables that legitimately changed via `allowed_table_changes` (matched by header
+  keywords, append-only asserted). See `references/chapter_refactor_playbook.md` §8.5.
+- **User intent → action** — 「回退」= restore the previous deliverable by **overwriting
+  copy-back (never delete)** and quarantining the voided version; 「把 A 和 B 合并并放到 B 位置」
+  = **ask the user first** how A's leftover content should be handled; 「某章内容乱 / 冗长，
+  整理精简」= quantify first, then choose "move the table" vs "compress the text";
+  「打开我看」= open with the system default program — the workspace filename may differ from
+  the Z-drive canonical name (the Z-drive copy carries an `8.` prefix, the workspace copy
+  does not). See `references/chapter_refactor_playbook.md` §6.
 
 ## Bundled Resources
 
@@ -147,6 +218,27 @@ Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
   文本级（标题/限度/编号/关键点框/`**`/U+FFFC）+ OOXML 结构级（逐格比对、列宽三同步、
   `sectPr`、`tblHeader`/`cantSplit`、`w:br[type=page]`、`w:pBdr`）+ 视觉级（既存 PDF
   文本层，缺则整层 SKIP 并提示「PDF 需手动导出、逐页目视待补」）。不内嵌 COM/PDF 渲染。
+  另含**尾部结构级**（结尾标记独立成段且唯一、增量说明不错挂、条目不跨小节）、
+  **迁表零损失**（按表头定位后断言维度不变）、**交叉引用双向断言**、**章节体量报告**；
+  四组新 config 字段缺省一律 SKIP，**绝不 FAIL**（老 config 行为不变）。
+- `docx_revise_toolkit.py` — importable 改稿原语库（import 无副作用）：
+  文档序遍历（`iter_block_items` / `all_paragraphs` —— **表内段落不在 `doc.paragraphs`**）、
+  按 style.name 定位（`find_paragraphs` / `find_heading` / `find_subheading` / `find_table`
+  —— 用表头关键字而非表索引）、保格式写入（`set_paragraph_text` /
+  `replace_in_paragraph` / `set_cell_text_preserve` —— 保留首 run 的 rPr、不用
+  `cell.text =`、一律以 Clark 记法写 `xml:space`）、结构搬移
+  （`move_table_with_notes` —— **先移表、再接说明段**）、重编号
+  （`renumber_headings` —— **按源编号降序**）、交叉引用改写
+  （`update_cross_references` —— 整段拼接后替换，跨 run 安全）、体量量化
+  （`measure_sections` / `measure_chapter`）。带 `--selftest <docx>` 只读自检。
+- `refactor_chapter.py` — config 驱动的章节重构 runner
+  （`--input/--output/--config/--baseline/--dry-run/--report`）；**七个固定阶段**
+  —— merge → delete → renumber → move-tables → compress → tail-fix → release；
+  每阶段做表内容指纹漂移检测；收尾自检尾部结构；**永不覆盖输入**。
+- `chapter_volume.py` — 只读体量报告（`--docx/--chapter/--format/--top`）：逐小节
+  正文 / 表内 / 合计 字数、表数、行数、bullet —— 「从哪砍」的决策依据，
+  并给出「搬表」与「压缩文字」的判定提示。
+- `fix_operation_card_blocks.py` — 成稿版式校正：把逐项操作卡的「主卡表 / SOP 引用框 / 关键点框」三类块统一为版心满宽 + 左对齐 + 单元格垂直居中 + 文字左对齐，消除「对齐方式不同 / 没铺开」的视觉不一致。按模板固定特征识别（红左边线 `C00000` / 蓝左边线 `1F3A5F` / 2 列含「方法要点」），**只动三类块、不动附录/产品/矩阵表**；纯版式改动零内容损失；带 `--selftest` 与 `--dry-run`，`--content-width-cm` 默认 17.0（横向传 25.7）。
 - `export_pdf.ps1` — Word COM 导出 PDF（已内置 `$doc.Fields.Update()` 防页码 0/1）；
   **本机 COM 被沙箱拦截，保留待环境修复，勿作为交付步骤**（见 pitfalls §10 / §12）。
 - `ocr_pipeline.py` — pypdfium2 render + RapidOCR banded scan (BAND=760, OVERLAP=120,
@@ -168,7 +260,20 @@ Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
 - `revision_playbook.md` — Stage 6 full SOP: 两层结构（通用规则 §1~§10 / 品种专项决策
   §11）、写回安全、列宽两策略、字体统一、批号回填分级口径、章节合并代码清单、
   矩阵可读化与删列三同步、版式修补、**三层验收清单与双路径**、正式升版与
-  「每次改完提醒版本名称 + 文件名日期」话术模板、环境约束索引、config 示例。
+  「每次改完提醒版本名称 + 文件名日期」话术模板、环境约束索引、config 示例；
+  **§5 的 config 驱动版本与 §8 的尾部完整性断言见 `chapter_refactor_playbook.md`**。
+- `chapter_refactor_playbook.md` — **章节重构 SOP（跨品种通用）**：「冗长」的量化与决策树；
+  「搬表而非删表」通则（表内容一字不删、迁后改指交叉引用、**先移表再接说明段**）；
+  定位 10 条硬约束（`doc.paragraphs` 身份漂移、styleId 非标准、目录与正文同名、
+  子标题样式不统一、跨 run 编号 token、表内段落不在 `doc.paragraphs`、禁硬编码表索引、
+  定位失败须抛错、位置锚点不得静默回退）；写入 6 条硬约束（Clark 记法 `xml:space`、
+  禁 `cell.text =`、整段回写取舍、克隆保格式、前后语义分明、**降序重编号 + 目标号不冲突**）；
+  **尾部结构完整性契约**；**用户指令 → 动作映射**；`refactor_chapter.py --config` 完整
+  schema；`verify_revision.py` 新增字段；体量报告决策示例。
+- `case_study_gsc_v6.md` — **骨化三醇注射液 v5→v6 修订实战复盘（品种专项）**：以六类动作
+  （物料溯源补录 / 表格字体统一 / 章节整合 / 矩阵可读化 / 矩阵精简 / 零回归验收）为骨架，
+  记录真实修订过程、实测数字、正式升版机制与已知债务，并回指通用规则 § 索引；
+  所有数值标注「算例非通用常量」，红线与 `revision_playbook.md` §11 一致。
 - `ocr_pipeline.md` — detailed OCR approach: pypdfium2 (not PyMuPDF),
   rapidocr-onnxruntime 1.2.3, onnxruntime MUST be 1.20.1 (system 1.31.1 segfaults;
   prepend the pinned path to `sys.path`), Windows.Media.Ocr cross-validation, 90°-rotated
@@ -208,3 +313,11 @@ Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
 - Stage 6 delivers DOCX only when Word COM is blocked; ask the user to export the PDF
   manually, and after every document change remind about the version name + filename date
   (see `revision_playbook.md` §9 / 附录 B).
+- When a chapter is judged verbose, **never delete detail tables**: relocate them into a new
+  appendix verbatim and leave conclusions + pointers behind; rewriting the pointers is part
+  of the job, not optional cleanup. Quantify first (`chapter_volume.py`) — pure text
+  trimming caps out around 8~25%, while moving the tables cuts 50%+ with zero fact loss.
+- Tail checks are assertions, not eyeballing: the closing marker must stand alone and
+  appear exactly once, and an 增量说明 section must not carry another section's items —
+  `verify_revision.py --config`'s `tail_integrity` enforces both (absent config → SKIP,
+  never FAIL).

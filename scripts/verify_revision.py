@@ -86,6 +86,47 @@ def cell_matrix(doc):
     return [[[c.text for c in r.cells] for r in t.rows] for t in doc.tables]
 
 
+# ------------------------------------------------- 表指纹 / 表头（结构比对用）
+def _table_header(tbl):
+    """表头行文本元组（用于判断两版表的**顺序**是否一致）。"""
+    if not tbl.rows:
+        return ()
+    return tuple(c.text.strip() for c in tbl.rows[0].cells)
+
+
+def _table_fingerprint(tbl):
+    """表的内容指纹：维度 + 每格文本。
+
+    与 `refactor_chapter.py` 的同名函数保持同一口径——**按内容**而非按索引，
+    迁表只改位置不改内容，指纹不变。
+    """
+    cells = []
+    for r in tbl.rows:
+        cells.append('\x1f'.join(c.text for c in r.cells))
+    return '%dx%d|%s' % (len(tbl.rows), len(tbl.columns), '\x1e'.join(cells))
+
+
+def _table_fingerprints(doc):
+    return [_table_fingerprint(t) for t in doc.tables]
+
+
+def _tables_by_header(doc, keywords, mode='all'):
+    """按表头关键字定位表（禁索引——迁表会让索引整体漂移）。"""
+    out = []
+    kws = keywords or []
+    if not kws:
+        return out
+    for t in doc.tables:
+        if not t.rows:
+            continue
+        head = ' '.join(c.text.strip() for c in t.rows[0].cells)
+        hit = (all(k in head for k in kws) if mode == 'all'
+               else any(k in head for k in kws))
+        if hit:
+            out.append(t)
+    return out
+
+
 # ---------------------------------------------------------------- XML 级工具
 def xml_root(docx_path):
     with zipfile.ZipFile(docx_path) as z:
@@ -231,8 +272,54 @@ def structure_level(docx_path, doc, cfg, rep, baseline_path, check_page_break):
         b = Document(baseline_path)
         A, B = cell_matrix(doc), cell_matrix(b)
         allowed = set(cfg.get('allowed_cells', []))
+        # 描述式白名单（新通道）：供「无法用索引表达」的场景使用
+        allowed_pats = list(cfg.get('allowed_cell_patterns', []))
         diffs = []
-        if len(A) != len(B):
+        # 表**顺序**是否一致（表头序列相同）。中间若发生迁表 / 删节，
+        # `doc.tables` 索引会整体漂移，此时「按索引逐格比对」必然假阳性
+        # —— 必须降级为**按表内容指纹的多重集合**比对。
+        hdr_a = [_table_header(t) for t in doc.tables]
+        hdr_b = [_table_header(t) for t in b.tables]
+        same_order = (len(A) == len(B)) and (hdr_a == hdr_b)
+        if not same_order:
+            fa = _table_fingerprints(doc)
+            fb = _table_fingerprints(b)
+            allowed_fp_a, allowed_fp_b = set(), set()
+            for spec in (cfg.get('allowed_table_changes') or []):
+                kws = spec.get('header_keywords', [])
+                mode = spec.get('match_mode', 'all')
+                for t in _tables_by_header(doc, kws, mode):
+                    allowed_fp_a.add(_table_fingerprint(t))
+                for t in _tables_by_header(b, kws, mode):
+                    allowed_fp_b.add(_table_fingerprint(t))
+            lost = sorted(set(fb) - set(fa) - allowed_fp_b)
+            added = sorted(set(fa) - set(fb) - allowed_fp_a)
+            # 「表序已变」本身不是差异（迁表/删节是合法操作），
+            # 只有**内容**变了才算差异。
+            rep.ck(True, '表序已变 → baseline 降级为指纹集合比对'
+                          '（丢失 %d / 新增 %d）' % (len(lost), len(added)), L)
+            if lost:
+                diffs.append('丢失/被改 %d 张' % len(lost))
+            if added:
+                diffs.append('新增/被改 %d 张' % len(added))
+            for x in (lost + added)[:6]:
+                diffs.append(x[:48])
+            # 白名单表正向断言：只允许**末尾追加**，旧行必须逐格保留
+            for spec in (cfg.get('allowed_table_changes') or []):
+                kws = spec.get('header_keywords', [])
+                mode = spec.get('match_mode', 'all')
+                olds = _tables_by_header(b, kws, mode)
+                news = _tables_by_header(doc, kws, mode)
+                for to, tn in zip(olds, news):
+                    if len(tn.rows) < len(to.rows):
+                        diffs.append('白名单表行数减少')
+                        continue
+                    for ri in range(len(to.rows)):
+                        if [c.text for c in to.rows[ri].cells] != \
+                                [c.text for c in tn.rows[ri].cells]:
+                            diffs.append('白名单表旧行 r%d 未原样保留' % ri)
+                            break
+        elif len(A) != len(B):
             diffs.append('表数不同 %d vs %d' % (len(A), len(B)))
         else:
             for ti, (ta, tb) in enumerate(zip(A, B)):
@@ -245,8 +332,15 @@ def structure_level(docx_path, doc, cfg, rep, baseline_path, check_page_break):
                         continue
                     for ci, (ca, cb) in enumerate(zip(ra, rb)):
                         key = '%d.%d.%d' % (ti, ri, ci)
-                        if ca != cb and key not in allowed:
-                            diffs.append(key)
+                        if ca == cb:
+                            continue
+                        if key in allowed:
+                            continue
+                        # 描述式白名单：模式串命中差异上下文即放行
+                        ctx = '%s' % ca
+                        if any(re.search(p, ctx) for p in allowed_pats):
+                            continue
+                        diffs.append(key)
         rep.ck(not diffs,
                'baseline 逐格零改动（差异 %d 处：%s）' % (len(diffs), diffs[:8]), L)
         sa, sb = sectpr_signatures(docx_path), sectpr_signatures(baseline_path)
@@ -342,6 +436,251 @@ def visual_level(cfg, rep, pdf_pages):
     return True
 
 
+# ------------------------------------------------- 尾部结构级（升版出口契约）
+def _para_texts(doc):
+    """正文段 [(style_name, text)]，保持文档序。"""
+    out = []
+    for p in doc.paragraphs:
+        st = p.style.name if p.style is not None else ''
+        out.append((st, (p.text or '').strip()))
+    return out
+
+
+def tail_level(doc, cfg, rep):
+    """尾部结构完整性 —— 合并/升版脚本的**出口契约**。
+
+    要防的三种真实事故（都实际发生过）：
+      1. 「增量说明」标题下**正文为空**——本该属于上一小节的条目被挂了上去；
+      2. 结尾标记「—— 本手册完 ——」**粘在 bullet 末尾**，不是独立成段；
+      3. 小节条目**跨小节错挂**。
+
+    **向后兼容**：本层的所有 config 字段缺失时，整层 SKIP（绝不 FAIL）。
+    旧 config 是别的品种的既有资产，不能因为脚本升级就变红。
+    """
+    L = '尾部结构级'
+    ti = cfg.get('tail_integrity')
+    if not ti:
+        rep.skip('未提供 tail_integrity，跳过尾部结构断言', L)
+        return
+
+    paras = _para_texts(doc)
+    bullets = {'List Bullet', 'List Bullet 2', 'List Paragraph'}
+
+    # --- 结尾标记 ---
+    marker = ti.get('end_marker')
+    if marker:
+        hits = [(st, t) for st, t in paras if marker in t]
+        exp = ti.get('end_marker_occurrences', 1)
+        rep.ck(len(hits) == exp,
+               '结尾标记出现 %d 次（期望 %d）' % (len(hits), exp), L)
+        if ti.get('end_marker_standalone', True) and hits:
+            standalone = [h for h in hits if h[1].strip() == marker]
+            rep.ck(bool(standalone),
+                   '结尾标记独立成段（命中 %d 处，其中独立 %d 处）'
+                   % (len(hits), len(standalone)), L)
+    else:
+        rep.skip('未提供 end_marker，跳过结尾标记断言', L)
+
+    # --- 增量说明正文非空 ---
+    #
+    # 判定口径（重要）：**不是所有增量说明节都要求概述段**。
+    # 真实文档里有两类增量说明：
+    #   (a) bullet 型——标题下直接跟若干条要点，本身就没有概述段（合法）；
+    #   (b) 概述型——标题下先有一段 Normal 概述，再跟要点（升版节常用）。
+    # 真正的事故是 (b) 型被写坏了：概述段丢失，本该属于**上一小节**的条目
+    # 被挂到了增量说明标题之下。
+    #
+    # 因此本断言只针对「本应概述型却写成 bullet 型」的节：
+    # 判定 = 该增量说明节的**第一条 bullet**，若其内容在文档别处已作为
+    # 独立小节的内容出现（即它本属别节），则报错。
+    # 简化且稳健的实现：只检查**文档最后一个**增量说明节（升版节），
+    # 且当该节之后紧跟收尾标记时，要求其下至少有一条 bullet 且这些 bullet
+    # 不得包含收尾标记（收尾标记必须独立成段，已由上面断言覆盖）。
+    inc_re = ti.get('increment_heading_regex', '增量说明')
+    rx = re.compile(inc_re)
+    if ti.get('require_body_paragraph', True):
+        inc_idx = []
+        for i, (st, t) in enumerate(paras):
+            if st in bullets or not t or not rx.search(t):
+                continue
+            if not re.match(r'^\s*\d', t):        # 必须是编号开头的标题段
+                continue
+            inc_idx.append(i)
+
+        # 收集「本应属于上一小节」的候选：出现在增量说明节之前的最后一个 bullet
+        bad = []
+        for i in inc_idx:
+            prev_bullet = None
+            for j in range(i - 1, -1, -1):
+                if paras[j][1] and paras[j][0] in bullets:
+                    prev_bullet = paras[j][1]
+                    break
+            if prev_bullet is None:
+                continue
+            # 下一段是 bullet，且与上一小节的末条**内容相同** → 错挂
+            nxt = None
+            for j in range(i + 1, len(paras)):
+                if paras[j][1]:
+                    nxt = paras[j]
+                    break
+            if nxt and nxt[0] in bullets and nxt[1][:24] == prev_bullet[:24]:
+                bad.append('%s → 首条与上一小节末条重复（错挂）' % paras[i][1][:26])
+        rep.ck(not bad,
+               '增量说明节无「错挂上一小节条目」（检查 %d 个增量说明节，异常：%s）'
+               % (len(inc_idx), bad[:4] or '无'), L)
+
+        # 概述型增量说明节（config 显式指定其编号）必须有概述段
+        strict = ti.get('strict_body_heading_numbers') or []
+        if strict:
+            sbad = []
+            for num in strict:
+                idx = None
+                for i, (st, t) in enumerate(paras):
+                    if st in bullets:
+                        continue
+                    if re.match(r'^\s*' + re.escape(str(num)) + r'(?![0-9.])', t):
+                        idx = i
+                        break
+                if idx is None:
+                    sbad.append('%s 未找到' % num)
+                    continue
+                nxt = None
+                for j in range(idx + 1, len(paras)):
+                    if paras[j][1]:
+                        nxt = paras[j]
+                        break
+                if nxt is None:
+                    sbad.append('%s 下无正文段' % num)
+                elif nxt[0] in bullets:
+                    sbad.append('%s 下首个段是 bullet，概述段缺失' % num)
+            rep.ck(not sbad,
+                   '指定增量说明节有概述段（异常：%s）' % (sbad[:4] or '无'), L)
+        else:
+            rep.skip('未提供 strict_body_heading_numbers，'
+                     '跳过「概述型增量说明必须有概述段」断言', L)
+    else:
+        rep.skip('require_body_paragraph=false，跳过增量说明正文断言', L)
+
+    # --- 跨小节错挂：bullet 段若自带编号，该编号不得大于其上方最近的小节标题 ---
+    if ti.get('forbid_cross_section_attach', True):
+        def num_of(t):
+            m = re.match(r'^\s*(\d+(?:\.\d+)*)(?![0-9.])', t)
+            if not m:
+                return None
+            return tuple(int(x) for x in m.group(1).split('.'))
+
+        cur_num = None       # 上方最近的小节标题编号（至少两级）
+        cross = []
+        for st, t in paras:
+            if not t:
+                continue
+            if st in bullets:
+                bn = num_of(t)
+                # bullet 自带编号且大于其上方的小节号 → 错挂
+                if bn is not None and cur_num is not None and bn > cur_num:
+                    cross.append(t[:30])
+                continue
+            n = num_of(t)
+            if n is not None and len(n) >= 2:
+                cur_num = n
+        rep.ck(not cross,
+               '无跨小节错挂条目（异常 %d 条：%s）' % (len(cross), cross[:4] or '无'), L)
+    else:
+        rep.skip('forbid_cross_section_attach=false，跳过错挂断言', L)
+
+
+# ------------------------------------------------- 章节体量（决策辅助）
+def volume_level(doc, cfg, rep):
+    """章节体量报告 + 可选硬断言。
+
+    这是「从哪砍」的决策依据：**表内文字与正文文字必须分开统计**，
+    否则会得出「全是文字，砍不动」的错误结论。
+    """
+    L = '章节体量'
+    sv = cfg.get('section_volume')
+    if not sv:
+        rep.skip('未提供 section_volume，跳过章节体量报告', L)
+        return
+    try:
+        from docx_revise_toolkit import measure_sections
+    except ImportError:
+        rep.skip('未安装 docx_revise_toolkit，跳过章节体量报告', L)
+        return
+
+    chapters = sv.get('chapters') or []
+    secs = []
+    for ch in chapters:
+        secs.extend(measure_sections(doc, chapter=str(ch)))
+    if not secs:
+        secs = measure_sections(doc)
+    total = sum(s['total_chars'] for s in secs)
+    tbl_total = sum(s['table_chars'] for s in secs)
+    ratio = (tbl_total / float(total) * 100) if total else 0
+    rep.ck(total > 0, '章节体量合计 %d 字（表内 %d 字，占 %.1f%%）'
+           % (total, tbl_total, ratio), L)
+    top = sorted(secs, key=lambda s: -s['total_chars'])[:sv.get('report_top_n', 5)]
+    for s in top:
+        rep.skip('体量 %s %s：正文 %d + 表内 %d = %d 字 / %d 表'
+                 % (s['number'] or '-', (s['title'] or '')[:24], s['chars'],
+                    s['table_chars'], s['total_chars'], s['tables']), L)
+    if sv.get('assert_no_empty_sections'):
+        empty = [s['number'] for s in secs
+                 if s['total_chars'] == 0 and s['style'] != 'Heading 1']
+        rep.ck(not empty, '无空小节（异常：%s）' % (empty[:6] or '无'), L)
+    mc = sv.get('min_body_chars')
+    if mc is not None:
+        thin = ['%s(%d)' % (s['number'], s['chars']) for s in secs
+                if s['chars'] < mc and s['number']]
+        rep.ck(not thin, '正文段字符数 ≥ %d（偏薄：%s）' % (mc, thin[:6] or '无'), L)
+
+
+# ------------------------------------------------- 交叉引用专项
+def crossref_level(doc, cfg, rep):
+    """迁表后的交叉引用双向断言：必须出现的新指向 + 必须消失的旧指向。"""
+    L = '交叉引用'
+    cr = cfg.get('cross_reference_checks')
+    if not cr:
+        rep.skip('未提供 cross_reference_checks，跳过交叉引用断言', L)
+        return
+    if cr.get('scan_cells', True):
+        full = full_text(doc)
+    else:
+        full = '\n'.join(p.text for p in doc.paragraphs)
+    for s in cr.get('must_contain', []):
+        rep.ck(s in full, '新指向命中：%s' % s, L)
+    for s in cr.get('must_not_contain', []):
+        rep.ck(s not in full, '旧指向 0 命中：%s' % s, L)
+
+
+# ------------------------------------------------- 迁表零损失
+def moved_tables_level(doc, cfg, rep):
+    """迁出表的维度必须不变（表内容一字不删，只挪位）。
+
+    **必须按表头关键字定位**，绝不能用索引——迁表会让 `doc.tables` 索引整体漂移。
+    """
+    L = '迁表零损失'
+    specs = cfg.get('moved_tables')
+    if not specs:
+        rep.skip('未提供 moved_tables，跳过迁表零损失断言', L)
+        return
+    for spec in specs:
+        kws = spec.get('header_keywords', [])
+        mode = spec.get('match_mode', 'all')
+        hits = [t for t in doc.tables if t.rows and (
+            all(k in ' '.join(c.text.strip() for c in t.rows[0].cells) for k in kws)
+            if mode == 'all' else
+            any(k in ' '.join(c.text.strip() for c in t.rows[0].cells) for k in kws))]
+        rep.ck(len(hits) >= 1,
+               '迁出表命中（%s）：%d 张' % (kws, len(hits)), L)
+        dims = spec.get('expect_dims')
+        if dims and hits:
+            ok = any(len(t.rows) == dims[0] and len(t.columns) == dims[1]
+                     for t in hits)
+            rep.ck(ok, '迁出表维度保持 %sx%s（实际 %s）'
+                   % (dims[0], dims[1],
+                      ['%dx%d' % (len(t.rows), len(t.columns)) for t in hits]), L)
+
+
 def verify(docx_path, config, pdf_path=None, baseline_path=None,
            matrix_table_title=None, check_page_break=False):
     _require_docx()
@@ -356,6 +695,12 @@ def verify(docx_path, config, pdf_path=None, baseline_path=None,
         config['matrix_table_title'] = matrix_table_title
     text_level(doc, full, config, rep, pdf_text)
     structure_level(docx_path, doc, config, rep, baseline_path, check_page_break)
+    # 尾部结构级：合并/升版的出口契约。
+    # 放在 OOXML 结构级之后、视觉级之前；config 缺字段时整层 SKIP（不 FAIL）。
+    tail_level(doc, config, rep)
+    moved_tables_level(doc, config, rep)
+    crossref_level(doc, config, rep)
+    volume_level(doc, config, rep)
     visual_done = visual_level(config, rep, pdf_pages)
     if not visual_done:
         print('\n★ PDF 需用户在 Word 手动导出、逐页目视待补；'

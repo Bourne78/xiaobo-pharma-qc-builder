@@ -100,7 +100,9 @@
 - 逐页 ViewImage 确认无溢出/截断/乱码/豆腐块，横向页右边界在页内；红框不跨页撕裂、无孤立红框页。
 - `orphan_kc` 双判据：每页红框数 ≤ 该页卡标题数，且逐卡配对「第 k 个红框页 == 第 k 个卡标题页」。
 - **本机 Word COM 被沙箱拦截时，视觉级整层标 SKIP**，并明确告知用户「PDF 需手动导出、逐页目视待补」；
-  不得把结构级通过表述为版式已验收。修订态完整断言集见 `references/revision_playbook.md` §8。
+  不得把结构级通过表述为版式已验收。修订态完整断言集见 `references/revision_playbook.md` §8；
+  一份真实修订态 `verify_revision.py --config`（骨化三醇 v5→v6：76 表 / 248 段 / 17 红框 /
+  18×6 矩阵）见 `references/case_study_gsc_v6.md` 附录，可直接当模板复用。
 
 ## 8. 已代码化的可复用组件（本技能内）
 以下模式已从"工程脚本"沉淀为 skill 内可直接调用的代码，做新品种手册时直接 import 复用：

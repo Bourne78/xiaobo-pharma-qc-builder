@@ -1,0 +1,47 @@
+{
+  "_comment": "红霉素手册 v7 删除第 5 章附录 H 的真实配置（品种专项算例，非通用常量）。注意：本例中的章节名/文件编号/数值仅为当时输入，禁止写进 delete_chapter.py 默认值。",
+  "chapter_anchor": "5  附录 H  源文件清单与效力总览",
+  "tail_anchor": "本手册完",
+  "delete_toc_entry": true,
+  "ref_rewrites": [
+    {
+      "_note": "版本沿革表 v7 行（历史记述）——就地软化，保留事实但去掉指向 H 的指针",
+      "scope": "cell",
+      "locate": "§6 深度精简",
+      "find": "迁入新增附录 H「源文件清单与效力总览」",
+      "replace": "并入本手册源文件汇总（原「源文件清单」附录，本版已移除）",
+      "expected_hits": 1
+    },
+    {
+      "_note": "附录 G·G.3 表格 S16 行——去指针、留括号内容",
+      "scope": "cell",
+      "locate": "受控空白记录模板未提供",
+      "find": "见附录 H.4（S17～S22）",
+      "replace": "（S17～S22）",
+      "expected_hits": 1
+    },
+    {
+      "_note": "附录 G·G.3 说明段——同上",
+      "scope": "para",
+      "locate": "本表按 v2 编制时原名列出",
+      "find": "见附录 H.4",
+      "replace": "（S17～S22）",
+      "expected_hits": 1
+    }
+  ],
+  "verify_absent": [
+    "附录 H",
+    "附录H",
+    "H.4",
+    "H.1",
+    "H.2",
+    "H.3",
+    "H.5",
+    "源文件清单与效力总览"
+  ],
+  "verify_present": [
+    "附录 G",
+    "5  附录 G  检验物料清单",
+    "本手册完"
+  ]
+}

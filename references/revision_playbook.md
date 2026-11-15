@@ -194,14 +194,28 @@ def replace_in(p_el, old, new):
 - 单元格：`完整名称（编号）`，例如 `XX 对照品（RP-01）`；同类多物料用顿号 `、`；无物料填 `—`。
 - 列头：`中文全称（缩写）`，例如 `试剂、试液与标准溶液（RGT-）`；用  
   `MATRIX_CAT_HEADERS`（`MATRIX_CAT_SHORT` 已是它的兼容别名，**值同为全称**，勿再当简称列头用）。
-- `build_matrix(cats=None, legacy=False)`：默认输出上述格式；`cats` 可裁剪类别（去掉某类即少一列）；  
-  `legacy=True` 回旧「名称 编号 + 换行」格式仅供旧稿兼容。
+- `build_matrix(cats=None, legacy=False, cell_mode=None)`：`cats` 可裁剪类别（去掉某类即少一列）。  
+  `cell_mode` 控制每格怎么写一条物料（优先于 legacy）：
+  - `"name_code"`（默认）：完整名称（编号），顿号 `、` 连接；
+  - `"name_spec"`：**名称 / 规格关键属性**（对应明细总表第 1 列），每条独立成行（返回串含 `\n`）；  
+    用于「把物料明细总表嵌进矩阵、取消代号」口径——此时明细总表可删，矩阵自包含；
+  - `"code"`：仅编号；`"legacy"`：旧「名称 编号 + 换行」（= legacy=True 别名）。
 - **删列必须三同步**：`tblW` 合计、`tblGrid/gridCol` 数量与宽度、每行每格 `tcW`；  
   表头 `tblHeader` 与数据行 `cantSplit` 保留；横向表列宽合计恰等于版心 14570tw。
 - `items` 字段仍是唯一数据源，`MATERIALS` 六类与 ID 前缀不动；删矩阵某类**不等于**删物料表。
 
+**name_spec 多行写回（踩坑）**：`build_matrix(cell_mode="name_spec")` 的输出含 `\n`，**不能**用  
+`cell.text=` 或 `set_cell_text_preserve`（前者丢 rPr、后者把 `\n` 写字面）。必须用  
+`docx_revise_toolkit.set_cell_multiline(cell, lines)`：克隆首 run 的 rPr（矩阵多为 7pt），  
+每条一个 `<w:br/>`，删多余段；返回 br 数 = 条数−1，调用方据此断言。  
+替换前先从明细总表建 `编号→名称/规格` 映射（**用 python-docx `.text`，禁用 lxml `itertext()`**——  
+后者在含大量命名空间的 run 上会假性重复计数），矩阵每个数据格用 `(?:RP|RGT|SMP|COL|INS|CON)-\d{2}`  
+提代号、逐条查映射，缺一即报错；`—` 原样保留。
+
 **验收误报规避**：「裸代号 0 命中」只扫矩阵**数据格 / 数据行**——全文扫会命中 F.2 物料表的  
-编号列、总览表关键物料列与操作卡表；顿号计数排除列头（列头本身含中文顿号）。
+编号列、总览表关键物料列与操作卡表；顿号计数排除列头（列头本身含中文顿号）。  
+删明细总表后，全文旧串「物料明细总表 / 矩阵列示物料编号」须 0 命中，且须清 G.1 口径段里对  
+「来源标记列 / √打勾列」的描述（两列随表消失）；[承载 sectPr 的空段](python_docx_pitfalls.md) 不动。
 
 > 复用/指向：`materials_data_model.md` §5（矩阵自动生成）、§7（列宽）、`SKILL.md` Stage 3。
 

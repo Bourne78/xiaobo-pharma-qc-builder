@@ -49,6 +49,7 @@ import re
 import copy
 
 from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 from docx.text.paragraph import Paragraph
 from docx.table import Table, _Row
 
@@ -61,7 +62,7 @@ __all__ = [
     'find_block', 'resolve_ref',
     # L3 写入
     'set_paragraph_text', 'replace_in_paragraph', 'replace_regex_in_paragraph',
-    'replace_in_document', 'set_cell_text_preserve', 'replace_in_cell',
+    'replace_in_document', 'set_cell_text_preserve', 'set_cell_multiline', 'replace_in_cell',
     # L4 结构
     'move_after', 'move_before', 'move_block_after', 'move_table_with_notes',
     'clone_paragraph_after', 'clone_paragraph_before', 'clone_row',
@@ -611,6 +612,53 @@ def replace_in_cell(cell, old, new, count=0):
     return total
 
 
+def set_cell_multiline(cell, lines):
+    """格内多行写入：保留首段首 run 的 rPr，每条物料一个 <w:br/>。
+
+    用途：把「物料名称 / 规格」等多条内容嵌进一个矩阵单元格，每条独立成行
+    （名称本身常含顿号 / 分号，用标点连接会糊成一团）。build_matrix 的
+    cell_mode="name_spec" 输出含 \\n 的串，正是喂给本函数。
+
+    - lines: list[str]，每条一行；元素内不要带 \\n。
+    - 返回插入的 w:br 数量（= len(lines)-1），便于调用方断言。
+    - 禁用 cell.text=；克隆首 run 的 rPr 保住字号/字体（矩阵多为 7pt）。
+    - 只动传入的 cell，不影响其它单元格。
+    """
+    import copy
+    ps = cell.paragraphs
+    if not ps:
+        cell.add_paragraph()
+        ps = cell.paragraphs
+    p0 = ps[0]._p
+    runs = p0.findall(qn('w:r'))
+    assert runs, '单元格首段无 run，无法克隆 rPr'
+    proto = runs[0].find(qn('w:rPr'))
+    rpr_copy = copy.deepcopy(proto) if proto is not None else None
+
+    for r in runs:                       # 清空首段原有 run
+        p0.remove(r)
+    br_count = 0
+    for i, line in enumerate(lines):
+        r = OxmlElement('w:r')
+        if rpr_copy is not None:
+            r.append(copy.deepcopy(rpr_copy))
+        t = OxmlElement('w:t')
+        t.text = str(line)
+        t.set(XMLSPACE, 'preserve')
+        r.append(t)
+        p0.append(r)
+        if i < len(lines) - 1:
+            br_run = OxmlElement('w:r')
+            if rpr_copy is not None:
+                br_run.append(copy.deepcopy(rpr_copy))
+            br_run.append(OxmlElement('w:br'))
+            p0.append(br_run)
+            br_count += 1
+    for p in ps[1:]:                     # 删除多余段
+        p._p.getparent().remove(p._p)
+    return br_count
+
+
 # =====================================================================
 # L4 · 结构操作
 # =====================================================================
@@ -1112,6 +1160,20 @@ def _selftest(path):
         chk('find_heading 不限层级仍命中 Normal 样式子标题',
             h is not None and el_text(h._p).startswith(num),
             '%s -> %s' % (num, style_name(h) if h else 'None'))
+
+    # set_cell_multiline：内存态写入 w:br，不落盘（用一个临时表单元格）
+    if n_tables:
+        from docx import Document as _D
+        _tmp = _D()                                   # 空白文档，纯内存
+        _c = _tmp.add_table(rows=1, cols=1).cell(0, 0)
+        _c.text = '模板'                              # 造一个带 rPr 的 run
+        _n = set_cell_multiline(_c, ['名称 A / 规格 A', '名称 B / 规格 B', '名称 C'])
+        _brs = _c._tc.findall('.//' + qn('w:br'))
+        chk('set_cell_multiline 插入 w:br 数 = 行数-1',
+            _n == 2 and len(_brs) == 2, '返回=%d 实际br=%d' % (_n, len(_brs)))
+        chk('set_cell_multiline 文本按行保留',
+            _c.text.split('\n') == ['名称 A / 规格 A', '名称 B / 规格 B', '名称 C'],
+            repr(_c.text))
 
     # 编号改写保格式（内存态，不落盘）
     num2 = subs[0]['number'] if subs else None

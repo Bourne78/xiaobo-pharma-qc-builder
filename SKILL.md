@@ -220,9 +220,12 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
   导出 `DEVIATION_CASES` / `CASE_BY_CODE` / `COMMON_PATTERNS` / `STABILITY_PLACEMENT_RULE` /
   `MANUAL_REVIEW_NOTES`，以及 `attach_case(key_text, case_code)` 把案例关键点挂到卡内红框。
 - `materials_template.py` — 附录 G 物料清单模板（六类，ID 前缀 RP-/RGT-/SMP-/COL-/INS-/CON-），
-  含 `build_matrix(cats=None, legacy=False)`：默认输出「完整名称（编号）」+ 顿号，
-  列头 `MATRIX_CAT_HEADERS`（中文全称（缩写）），`cats` 可裁剪类别，`legacy=True` 回旧格式；
+  含 `build_matrix(cats=None, legacy=False, cell_mode=None)`：`cell_mode` 控制每格写法——
+  `"name_code"`（默认，完整名称（编号）+ 顿号）/ `"name_spec"`（名称 / 规格关键属性，
+  每条独立成行，供「把明细总表嵌进矩阵、取消代号」口径）/ `"code"` / `"legacy"`；
+  列头 `MATRIX_CAT_HEADERS`（中文全称（缩写）），`cats` 可裁剪类别；
   始终从物料 `items` 字段自动派生矩阵，杜绝手工两份不同步。
+  `name_spec` 的多行串须配 `docx_revise_toolkit.set_cell_multiline` 写回（见下）。
 - `patch_existing_manual.py` — 成稿原地修订：合并两份已实测的列宽内核
   （`--strategy autofit` 标记层 / `content-width` 真实定宽层，CJK×1.0、英文×0.5、
   `FLOOR=480tw`、按 section 取版心、tblW/gridCol/tcW 三同步）与
@@ -239,8 +242,10 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
   文档序遍历（`iter_block_items` / `all_paragraphs` —— **表内段落不在 `doc.paragraphs`**）、
   按 style.name 定位（`find_paragraphs` / `find_heading` / `find_subheading` / `find_table`
   —— 用表头关键字而非表索引）、保格式写入（`set_paragraph_text` /
-  `replace_in_paragraph` / `set_cell_text_preserve` —— 保留首 run 的 rPr、不用
-  `cell.text =`、一律以 Clark 记法写 `xml:space`）、结构搬移
+  `replace_in_paragraph` / `set_cell_text_preserve` / `set_cell_multiline`
+  —— 保留首 run 的 rPr、不用 `cell.text =`、一律以 Clark 记法写 `xml:space`；
+  `set_cell_multiline(cell, lines)` 格内每条一个 `<w:br/>`，配 `build_matrix` 的
+  `name_spec` 多行串写回，返回 br 数供断言）、结构搬移
   （`move_table_with_notes` —— **先移表、再接说明段**）、重编号
   （`renumber_headings` —— **按源编号降序**）、交叉引用改写
   （`update_cross_references` —— 整段拼接后替换，跨 run 安全）、体量量化

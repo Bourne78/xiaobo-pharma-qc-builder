@@ -45,7 +45,8 @@ WorkBuddy 技能：从零散 QC 文档（SOP、方法验证报告、药品注册
 | `scripts/export_pdf.ps1` | Word COM 导出 PDF（含 `Fields.Update()`）；本机 COM 被拦截，保留待环境修复 |
 | `scripts/ocr_pipeline.py` | 扫描 PDF OCR 流水线 |
 | `references/revision_playbook.md` | Stage 6 成稿修订、零回归与正式升版 SOP（通用规则 + 品种专项两层） |
-| `references/*.md` | 避坑集与数据模型（OOXML / 物料模型 / 案例挂接模式 / OCR / 手册结构） |
+| `references/case_study_gsc_v6.md` | 骨化三醇注射液 v5→v6 修订实战复盘（六类动作 / 实测 config / 升版机制 / 已知债务） |
+| `references/*.md` | 避坑集与数据模型（OOXML / 物料模型 / 案例挂接模式 / OCR / 手册结构 / 修订复盘） |
 | `tools/upload_to_github.py` | 可复用上传脚本（维护者用） |
 
 ---
@@ -80,5 +81,6 @@ WorkBuddy 技能：从零散 QC 文档（SOP、方法验证报告、药品注册
 ## 脱敏与许可说明
 
 技能内的示例数据已脱敏（真实姓名 → 角色，如「QC 主管 / 检测人员 / 新入职人员」），
-但保留真实产品名（聚多卡醇注射液）与文件编号（STP-SP-036-5001）用于演示。
-仓库默认公开，若需保密请在 GitHub 网页将仓库改为 Private。
+但保留真实产品名（聚多卡醇注射液、骨化三醇注射液）与文件编号（STP-SP-036-5001）用于演示。
+其中骨化三醇注射液 v5→v6 是一次完整的 Stage 6 成稿修订，复盘见
+`references/case_study_gsc_v6.md`。仓库默认公开，若需保密请在 GitHub 网页将仓库改为 Private。

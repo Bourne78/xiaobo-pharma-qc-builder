@@ -40,6 +40,10 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
 - User asks to rewrite a chapter (e.g. the 验证结论 / 稳定性摘要 chapter) into a focused
   「各法验证项目及指标汇总表 + 稳定性时间点结果矩阵」 → use `scripts/build_validation_summary.py`
   with a JSON config and `references/validation_summary_playbook.md`.
+- User asks to delete / remove a chapter or appendix (删去 / 不要这一章 / 删除附录 X) →
+  use `scripts/delete_chapter.py` with a JSON config and `references/delete_chapter_playbook.md`:
+  deletes the TOC entry + body block up to the tail anchor, rewrites dangling cross-references
+  with a **paragraph + table-cell full scan**, and asserts zero residuals / preserved anchors.
 - User asks for a formal version upgrade (升版 / 版本沿革 / 增量说明) or a zero-regression
   check after edits.
 - Word COM export is blocked and a DOCX / XML-level verification fallback is needed.
@@ -246,6 +250,7 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
   —— merge → delete → renumber → move-tables → compress → tail-fix → release；
   每阶段做表内容指纹漂移检测；收尾自检尾部结构；**永不覆盖输入**。
 - `build_validation_summary.py` — 配置驱动地把目标章节重写为「验证项目及指标汇总表 + 稳定性结果矩阵」：定位真实章节标题（取最后出现避 TOC 伪条目）、收集-插入防孤儿段、列宽合计=9638 twips 校验、cantSplit 入 trPr / vAlign 入 tcPr、OCR·需核 标注；`--dry-run` 不写盘、`--selftest` 内置自检；数据全来自 JSON config，**不含产品专属数值**。`references/validation_summary_example_lk080.json` 为红霉素示例。
+- `delete_chapter.py` — 配置驱动地删除章节/附录并清理悬空引用：真实标题取最后出现、TOC 条目取首次出现、正文删到 `tail_anchor`（结尾锚点保留唯一）；**段落 + 表格单元格全扫描**（`iter w:t`）定位引用、run 级精确替换、跨 run 报硬错、`expected_hits` 锁定命中数；先改引用后删块；验收 `verify_absent` 零残留 + `verify_present` 保留锚点 + 结尾唯一，不过即抛错不保存；`--dry-run`/`--selftest`。**不含产品专属章节名/数值**。`references/delete_chapter_example_lk080_h.json` 为红霉素示例。
 - `chapter_volume.py` — 只读体量报告（`--docx/--chapter/--format/--top`）：逐小节
   正文 / 表内 / 合计 字数、表数、行数、bullet —— 「从哪砍」的决策依据，
   并给出「搬表」与「压缩文字」的判定提示。
@@ -283,6 +288,7 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
   **尾部结构完整性契约**；**用户指令 → 动作映射**；`refactor_chapter.py --config` 完整
   schema；`verify_revision.py` 新增字段；体量报告决策示例。
 - `validation_summary_playbook.md` — **第 4 章重写配方（跨品种通用）**：把「方法转移 / 稳定性摘要」章重写为「各法验证项目及指标汇总 + 稳定性时间点结果矩阵」；含数据来源分层与 OCR·需核 纪律、7 条实现要点（真实标题最后出现避 TOC 伪条目、收集-插入防孤儿段、列宽=9638 twips、cantSplit 入 trPr / vAlign 入 tcPr、字体四属性）、零回归验收、与 refactor_chapter 衔接、红霉素算例非通用常量警告。
+- `delete_chapter_playbook.md` — **删除章节/附录 + 悬空引用清理 SOP（跨品种通用）**：六步流程（只读定位 TOC/正文 → 定边界 → **段落+表格全扫描**引用 → 三分类改写〔TOC 删 / 历史记述软化 / 正文指针去指针〕→ 先改后删 → 验收四件套）；8 条硬约束（含「只扫段落漏表格致删 G 回退」血泪教训、跨 run 报硬错、历史沿革就地软化、结尾锚点唯一）；`--config` schema 与红霉素删附录 H 算例；品种数值非通用常量警告。
 - `case_study_gsc_v6.md` — **骨化三醇注射液 v5→v6 修订实战复盘（品种专项）**：以六类动作
   （物料溯源补录 / 表格字体统一 / 章节整合 / 矩阵可读化 / 矩阵精简 / 零回归验收）为骨架，
   记录真实修订过程、实测数字、正式升版机制与已知债务，并回指通用规则 § 索引；

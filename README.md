@@ -11,13 +11,14 @@ WorkBuddy 用户级技能：从零散 QC 文档（SOP、方法验证报告、药
 - **附录 G 检验物料清单**：六类物料（对照品 / 试剂试液 / 供试品 / 色谱柱 / 仪器 / 消耗品器皿）+ 自动派生「检验项 × 物料」矩阵
 - **成稿修订与正式升版**：列宽重算、字体归一、批号/供应商回填、章节合并重编号、零回归三层验收、版本号与日期交付收尾
 - **成稿版式校正（纯版式零内容损失）**：`fix_operation_card_blocks.py` 把操作卡三类块统一为版心满宽 + 左对齐；`fix_flow_layout.py` 去除强制换页改连续流式，卡间浅灰分隔线 + `cantSplit`/`keep_with_next` 安全网
+- **第 4 章重写（验证摘要 + 稳定性矩阵）**：配置驱动把「方法转移 / 稳定性摘要」章重写为「各法验证项目及指标汇总表 + 稳定性时间点结果矩阵」（`build_validation_summary.py` + `validation_summary_playbook.md`），含 OCR·需核 标注纪律与孤儿段防护
 
 ## 目录
 | 路径 | 作用 |
 |---|---|
 | `SKILL.md` | 技能入口与全流程说明（WorkBuddy 据此加载） |
 | `scripts/` | python-docx 助手集 + 修订 / 验收 / 上传脚本（含 `fix_operation_card_blocks.py` 操作卡三类块版式统一、`fix_flow_layout.py` 连续流式排版去除强制换页） |
-| `references/` | 避坑集、数据模型、修订 SOP、实战复盘 |
+| `references/` | 避坑集、数据模型、修订 SOP、实战复盘、第 4 章重写配方（`validation_summary_playbook.md` + 红霉素示例 JSON） |
 | `tools/upload_to_github.py` | 把本技能推送到 GitHub 的脚本 |
 
 ## 在 WorkBuddy 中调用

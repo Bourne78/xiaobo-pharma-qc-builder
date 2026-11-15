@@ -10,19 +10,20 @@ WorkBuddy 用户级技能：从零散 QC 文档（SOP、方法验证报告、药
 - **偏差 / OOS / CAPA 案例挂接**：历史教训脱敏后挂到对应卡片红框，红框数量不变
 - **附录 G 检验物料清单**：六类物料（对照品 / 试剂试液 / 供试品 / 色谱柱 / 仪器 / 消耗品器皿）+ 自动派生「检验项 × 物料」矩阵
 - **成稿修订与正式升版**：列宽重算、字体归一、批号/供应商回填、章节合并重编号、零回归三层验收、版本号与日期交付收尾
+- **成稿版式校正（纯版式零内容损失）**：`fix_operation_card_blocks.py` 把操作卡三类块统一为版心满宽 + 左对齐；`fix_flow_layout.py` 去除强制换页改连续流式，卡间浅灰分隔线 + `cantSplit`/`keep_with_next` 安全网
 
 ## 目录
 | 路径 | 作用 |
 |---|---|
 | `SKILL.md` | 技能入口与全流程说明（WorkBuddy 据此加载） |
-| `scripts/` | python-docx 助手集 + 修订 / 验收 / 上传脚本（含 `fix_operation_card_blocks.py` 操作卡三类块版式统一） |
+| `scripts/` | python-docx 助手集 + 修订 / 验收 / 上传脚本（含 `fix_operation_card_blocks.py` 操作卡三类块版式统一、`fix_flow_layout.py` 连续流式排版去除强制换页） |
 | `references/` | 避坑集、数据模型、修订 SOP、实战复盘 |
 | `tools/upload_to_github.py` | 把本技能推送到 GitHub 的脚本 |
 
 ## 在 WorkBuddy 中调用
 - 显式点名：`@skill:xiaobo-pharma-qc-builder 把这份 STP/SOP 整理成检验手册`
 - 自然语言：「帮我把这批 SOP 和验证报告梳理成一份检验准备手册」
-- 触发词：检验手册 / 检验物料清单 / 备料核对清单 / 关键点框 / 成稿修订 / 修订升版 / 零回归验收 …
+- 触发词：检验手册 / 检验物料清单 / 备料核对清单 / 关键点框 / 成稿修订 / 修订升版 / 零回归验收 / 三类块没铺开 / 章节间空白太多 / 连续排版 …
 
 ## 安装（使用者）
 将本仓库 clone 后，把整个目录（含根 `SKILL.md`）复制到：

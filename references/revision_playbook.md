@@ -404,6 +404,10 @@ def replace_in(p_el, old, new):
   下次生成可用 `--font-mode cjk-split` 并目视确认。
 - 项目工作区的 `build_gsc_v5.py` / `data_gsc_v5.py` 仍是 v5 代号版，**重跑会回退**；
   这属于工作区债务、与技能目录无关，执行期禁止重跑。
+- 红霉素 v8「搬附录 G 进第 2 章 + G.3 并入 G.1 / D.4 并入 G.2 / G.2.1~6 六表并入 G.3 /
+  矩阵整合产出 v8」的一次性脚本，已**原样归档**到 `scripts/archive_20261117/`
+  （当次算例、不可重跑）。工作区的备份 docx 与成品 docx 不得作为这些脚本的输入重跑；
+  新任务走 §5 config 驱动的通用 runner 与 `chapter_refactor_playbook.md`。
 
 ---
 

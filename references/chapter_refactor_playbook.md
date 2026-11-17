@@ -724,6 +724,19 @@ baseline 逐格比对原本是**按 `doc.tables` 索引**做的。中间一旦�
 > ⚠️ 这些数字是**算例**，不是通用常量。任何品种的默认值都应从
 > `chapter_volume.py` 的实测报告得出，不得把上表数字写进脚本。
 
+### 历史一次性脚本归档（红霉素 v8，2026-11-17）
+
+红霉素 v8 的「搬附录 G 进第 2 章 + 三次内容合并（G.2.1~6 并 G.3 / D.4 并 G.2 /
+G.3 并 G.1）+ 矩阵整合产出 v8」五个一次性执行脚本，已按用户要求**原样归档**至
+`scripts/archive_20261117/`（含该目录 `README.md`）。它们是**当次算例、不可直接重跑**：
+含产品硬编码路径、绝对 `sys.path`、body 索引常量、写死编号与表格维度。
+
+搬章当次的关键做法已融入本文通用规则：整块元素搬迁时**载 `sectPr` 的空段必须随迁**
+（横向节方向 `[纵,横,纵]` 由元素整体搬移自动保持）；真实标题取最后出现、TOC 取首次；
+正文与表格单元格**全扫描**清引用、历史修订表豁免；改前逐块 c14n 指纹快照 +
+白名单零回归。新任务用 §2/§4/§5 与 `docx_revise_toolkit.py` / `refactor_chapter.py`
+的通用能力，不要重跑归档脚本。
+
 ---
 
 ## 附录 A 引用索引
@@ -740,3 +753,4 @@ baseline 逐格比对原本是**按 `doc.tables` 索引**做的。中间一旦�
 | §7 config schema | `scripts/refactor_chapter.py` |
 | §8 verify 字段 | `scripts/verify_revision.py`；`revision_playbook.md` 附录 C |
 | 收尾提醒话术 | `revision_playbook.md` §9 / 附录 B（**不在本文件重复**） |
+| §9 历史一次性脚本归档 | `scripts/archive_20261117/README.md`（红霉素 v8 当次算例，**不可重跑**） |

@@ -266,6 +266,11 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
 - `ocr_pipeline.py` — pypdfium2 render + RapidOCR banded scan (BAND=760, OVERLAP=120,
   SCALE=1.6), near-duplicate line merge, JSON output. Includes the onnxruntime 1.20.1 pin
   workaround.
+- `archive_20261117/` — 历史一次性脚本归档（红霉素 v8 搬「附录 G」进第 2 章 + G.2.1~6 并 G.3 /
+  D.4 并 G.2 / G.3 并 G.1 三次内容合并 + 矩阵整合产出 v8 的当次执行记录）。**仅供审计，不可直接重跑**：
+  含产品硬编码路径 / 绝对 `sys.path` / body 索引常量 / TMP 输出 / 写死编号与表格维度；
+  新任务请用 `docx_revise_toolkit.py` / `refactor_chapter.py` / `delete_chapter.py` 的通用能力。
+  详见该目录 `README.md`。
 
 ### references/
 - `python_docx_pitfalls.md` — OOXML element ordering (tblLayout before tblLook;

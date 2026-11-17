@@ -4,6 +4,11 @@
 以下步骤把 `xiaobo-pharma-qc-builder` 技能推到你建的 GitHub 仓库
 `Bourne78/xiaobo-pharma-qc-builder`。
 
+> **当前同步通道（2026-11-17 起）**：本仓库已改为通过**会话内 GitHub MCP 代理的
+> `push_files` 全量同步**——执行脚本在工作区 `push_skill_via_mcp.py`，令牌取自
+> `CODEBUDDY_MCP_CONFIG`（仅进程内使用，不用 PAT、不落盘），本机不建 git 仓库。
+> 下方 git 步骤仅为**历史备用说明**，本环境下不执行。
+
 > ⚠️ 仓库当前为 **public（公开）**。技能内虽已脱敏（无真实姓名 / 内网 IP / 内网域名），
 > 但仍含真实产品名（聚多卡醇注射液）与文件编号（STP-SP-036-5001）等内部 QC 信息。
 > 若需保密，请先在 GitHub 网页将仓库改为 Private，再执行下面的推送。

@@ -325,6 +325,14 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
   认证走本机 `git credential` 缓存的 github.com 令牌（亦支持 `GITHUB_TOKEN` 环境变量），
   逐个文件 PUT 到 REST Contents API，已存在文件自动带 sha 更新。用于绕过「WorkBuddy
   GitHub 连接器只读」与「沙箱直连 github.com 主站超时」的限制。用法见脚本内 docstring。
+- `push_skill_via_mcp.py` — **当前推荐的同步通道**：经本会话 GitHub MCP 代理的
+  `push_files` 把整个技能目录**全量分批同步**到远端（默认 `Bourne78/xiaobo-pharma-qc-builder@main`）。
+  令牌取自会话环境变量 `CODEBUDDY_MCP_CONFIG`（仅进程内、不落盘、不用 PAT），本机不建 git 仓库。
+  技能根目录自动探测为 `Path(__file__).resolve().parent.parent`（clone 后开箱即用），
+  可用 `--skill-root` / `--owner` / `--repo` / `--branch` / `--message` 覆盖（fork 时改 owner/repo）；
+  `--dry-run` 只预演，`--verify-only` 只逐文件比对远端 blob sha（37/37 为准）。
+  白名单 `.py/.ps1/.md/.json/.txt`，排除 `__pycache__`/隐藏/`.bak`/`.zip`/`>1MB`，≤8 文件/≤200k 字节分批。
+  clone 者须自带带写权限的 GitHub MCP 配置；公开仓库含内部 QC 信息，慎推公开 fork。
 
 ## Usage Notes
 

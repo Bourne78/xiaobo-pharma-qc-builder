@@ -21,7 +21,8 @@ WorkBuddy 用户级技能：从零散 QC 文档（SOP、方法验证报告、药
 | `scripts/` | python-docx 助手集 + 修订 / 验收 / 上传脚本（含 `fix_operation_card_blocks.py` 操作卡三类块版式统一、`fix_flow_layout.py` 连续流式排版去除强制换页、`build_validation_summary.py` 第4章重写、`delete_chapter.py` 删章节清引用） |
 | `scripts/archive_20261117/` | 红霉素 v8「搬附录 G 进第 2 章 + 三次内容合并 + 矩阵整合」一次性执行脚本归档（**历史记录、勿重跑**，详见该目录 README.md） |
 | `references/` | 避坑集、数据模型、修订 SOP、实战复盘、第 4 章重写配方（`validation_summary_playbook.md`）、删章节清引用 SOP（`delete_chapter_playbook.md` + 红霉素示例 JSON） |
-| `tools/upload_to_github.py` | 把本技能推送到 GitHub 的脚本 |
+| `tools/upload_to_github.py` | 把本技能推送到 GitHub 的脚本（REST Contents API + git credential） |
+| `tools/push_skill_via_mcp.py` | 通过会话内 GitHub MCP 代理全量同步技能到 GitHub（clone 后可用、免 PAT / 免本机 git 仓库；支持 --dry-run / --verify-only） |
 
 ## 在 WorkBuddy 中调用
 - 显式点名：`@skill:xiaobo-pharma-qc-builder 把这份 STP/SOP 整理成检验手册`

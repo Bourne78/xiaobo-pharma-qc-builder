@@ -5,9 +5,23 @@
 `Bourne78/xiaobo-pharma-qc-builder`。
 
 > **当前同步通道（2026-11-17 起）**：本仓库已改为通过**会话内 GitHub MCP 代理的
-> `push_files` 全量同步**——执行脚本在工作区 `push_skill_via_mcp.py`，令牌取自
-> `CODEBUDDY_MCP_CONFIG`（仅进程内使用，不用 PAT、不落盘），本机不建 git 仓库。
-> 下方 git 步骤仅为**历史备用说明**，本环境下不执行。
+> `push_files` 全量同步**——执行脚本已纳入技能包 `tools/push_skill_via_mcp.py`
+> （clone 后即可用），令牌取自 `CODEBUDDY_MCP_CONFIG`（仅进程内使用，不用 PAT、不落盘），
+> 本机不建 git 仓库。下方 git 步骤仅为**历史备用说明**，本环境下不执行。
+
+### 当前推荐：MCP 全量同步（clone 后可直接用）
+
+前置条件：当前会话已配置带**写权限**的 GitHub MCP（环境变量 `CODEBUDDY_MCP_CONFIG` 内含
+`mcpServers.github.url/headers`）。只读连接器会 403。在技能根目录执行：
+
+```bash
+python tools/push_skill_via_mcp.py --dry-run      # 预演：列清单/分批，不连 MCP
+python tools/push_skill_via_mcp.py                # 全量 push_files，随后逐文件 sha 校验
+python tools/push_skill_via_mcp.py --verify-only  # 仅校验远端 37/37 blob sha
+```
+
+技能根自动探测为脚本所在 `tools/` 的上级；若挪动脚本用 `--skill-root` 指定。
+可选覆盖：`--owner` / `--repo` / `--branch` / `--message`（fork 到自己账号时改 owner/repo）。
 
 > ⚠️ 仓库当前为 **public（公开）**。技能内虽已脱敏（无真实姓名 / 内网 IP / 内网域名），
 > 但仍含真实产品名（聚多卡醇注射液）与文件编号（STP-SP-036-5001）等内部 QC 信息。
@@ -46,6 +60,11 @@ git push -u origin main
 若你更希望它位于 `xiaobo-pharma-qc-builder/` 子目录，把本目录内容整体移到该子目录再提交即可。
 
 ## 验证推送成功
+
+MCP 通道：`python tools/push_skill_via_mcp.py --verify-only` 输出
+`[VERIFY OK] 37/37 文件远端 blob sha 一致` 即视为验收通过（以当前文件数为准）。
+
+以下 git 步骤仅为历史备用：
 
 ```bash
 git ls-files

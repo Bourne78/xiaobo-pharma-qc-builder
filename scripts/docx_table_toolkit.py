@@ -45,6 +45,7 @@ SOP_EDGE   = "1F3A5F"   # SOP 引用块左竖线
 CN_FONT    = "宋体"                 # eastAsia 中文字体
 BODY_FONT  = "宋体"                 # 正文默认
 ASCII_FONT = "Times New Roman"      # ascii / hAnsi / cs
+HEADER_FONT = "微软雅黑"             # 页眉字体（成品手册约定；页脚不设显式字体名、继承 Normal）
 
 # 纵向版心 17.0cm；横向版心 25.7cm
 PORTRAIT_TEXT_WIDTH_CM = 17.0
@@ -69,7 +70,7 @@ def setup_page(sec, landscape=False):
     return sec
 
 
-def set_default_font(doc, name=BODY_FONT, size=10.5):
+def set_default_font(doc, name=BODY_FONT, size=9.5):
     """Normal 样式同步写 rFonts 四属性，避免复杂文种回退。"""
     style = doc.styles["Normal"]
     style.font.name = ASCII_FONT
@@ -138,7 +139,7 @@ def shade(cell, fill):
     tcPr.append(shd)
 
 
-def add_rich_runs(p, text, font=BODY_FONT, size=10.5, color=None, base_bold=False):
+def add_rich_runs(p, text, font=BODY_FONT, size=9.5, color=None, base_bold=False):
     """把带 **加粗** 标记的文本渲染到段落 p 中（** 成对出现时切换加粗）。
     base_bold=True 时全部加粗；文本中的 \\n 转为软换行。
     直接 add_run 会把 ** 原样显示，必须走本函数。"""
@@ -252,7 +253,7 @@ def add_h1_page(doc, text):
     return p
 
 
-def add_para(doc, text, size=10.5, bold=False, color=None, font=BODY_FONT, space=4, align=None):
+def add_para(doc, text, size=9.5, bold=False, color=None, font=BODY_FONT, space=4, align=None):
     p = doc.add_paragraph()
     p.paragraph_format.space_after = Pt(space)
     if align:
@@ -264,7 +265,7 @@ def add_para(doc, text, size=10.5, bold=False, color=None, font=BODY_FONT, space
     return p
 
 
-def add_bullet(doc, text, size=10.5):
+def add_bullet(doc, text, size=9.5):
     p = doc.add_paragraph(style="List Bullet")
     r = p.add_run(text); set_cjk(r, BODY_FONT)
     r.font.size = Pt(size)
@@ -481,8 +482,8 @@ def _add_field(paragraph, field_code):
 def add_header_footer(doc, header_text):
     """设置页眉 + 页脚，适用于单节或多节文档（如含横向附录的文档）。
 
-    页眉：第 1 节写描述性文字（居中 8pt 灰字）；其余节链接沿用第 1 节。
-    页脚：「第 X 页 / 共 Y 页」，X=PAGE 域，Y=NUMPAGES 域（居中 8pt 灰字）；
+    页眉：第 1 节写描述性文字（微软雅黑 8pt 灰字）；其余节链接沿用第 1 节。
+    页脚：「第 X 页 / 共 Y 页」，X=PAGE 域，Y=NUMPAGES 域（无显式字体名、8pt 灰字，继承 Normal）；
           其余节链接沿用第 1 节。
 
     顺序要点：必须先在 sections[0] 写好页眉页脚，再把后续节设为
@@ -493,7 +494,7 @@ def add_header_footer(doc, header_text):
     hp.text = ""
     hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     hr = hp.add_run(header_text)
-    set_cjk(hr, CN_FONT); hr.font.size = Pt(8); hr.font.color.rgb = GREY
+    set_cjk(hr, HEADER_FONT, HEADER_FONT); hr.font.size = Pt(8); hr.font.color.rgb = GREY
     for s in doc.sections[1:]:
         s.header.is_linked_to_previous = True
     # ---- 页脚 ----
@@ -501,11 +502,11 @@ def add_header_footer(doc, header_text):
     fp = fsec.footer.paragraphs[0]
     fp.text = ""
     fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = fp.add_run("第 "); set_cjk(r, CN_FONT); r.font.size = Pt(8); r.font.color.rgb = GREY
+    r = fp.add_run("第 "); r.font.size = Pt(8); r.font.color.rgb = GREY
     _add_field(fp, "PAGE")
-    r = fp.add_run(" 页 / 共 "); set_cjk(r, CN_FONT); r.font.size = Pt(8); r.font.color.rgb = GREY
+    r = fp.add_run(" 页 / 共 "); r.font.size = Pt(8); r.font.color.rgb = GREY
     _add_field(fp, "NUMPAGES")
-    r = fp.add_run(" 页"); set_cjk(r, CN_FONT); r.font.size = Pt(8); r.font.color.rgb = GREY
+    r = fp.add_run(" 页"); r.font.size = Pt(8); r.font.color.rgb = GREY
     for s in doc.sections[1:]:
         s.footer.is_linked_to_previous = True
     return doc

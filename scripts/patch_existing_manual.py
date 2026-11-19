@@ -102,7 +102,7 @@ def _run_size_pt(r):
                 return int(szEl.get(qn('w:val'))) / 2.0
             except (TypeError, ValueError):
                 pass
-    return 10.5                          # 表格默认五号
+    return 9.5                           # 表格默认字号（成品口径 9.5pt）
 
 
 def cell_ideal_width_twips(tc):

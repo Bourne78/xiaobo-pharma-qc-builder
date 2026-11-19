@@ -14,14 +14,20 @@ skill packages a verified python-docx table toolkit, a Chinese-scanned-PDF OCR p
 the data model for an inspection material list, and the hard-won layout/extraction
 pitfalls so the work is reproducible without re-discovering them each time.
 
-The deliverable is typically a multi-stage Word manual for one drug product:
-0) 编制说明/溯源 → 1) 产品基本信息 → 2) 一页速览总览表(检验项清单) → 3) 逐项操作卡(每
-项一张，含🔴关键点框) → 4) 验证结论/限度摘要 → 5) 附录 A~G → 6) 参考文献与待核对项。
-Appendix G (检验物料清单) is a 备料核对清单, not a cost ledger.
+The deliverable is typically a multi-stage Word manual for one drug product (current
+default layout, aligned with 注射用乳糖酸红霉素 v8):
+0) 编制说明/溯源 → 1) 产品基本信息 → 2) 一页速览总览表(检验项清单) →
+2.2) 检验物料清单(备料核对清单 + 检验项×物料矩阵) → 3) 逐项操作卡(每项一张，
+含★关键点框) → 4) 验证结论/限度摘要(4.1 各法验证指标 + 4.2 稳定性矩阵) →
+5) 附录 A~F。
+The 检验物料清单 is a 备料核对清单, not a cost ledger; by default it lives at 2.2.
+There is NO standalone 附录 G and NO §6 参考文献 section in the current default.
+Older products kept a standalone 附录 G (骨化三醇 v6: 顺延为 F) and/or §6 — those are
+historical variants, not the default; see `references/manual_structure.md` §1.
 
 **Validated across products.** The skill has been used end-to-end on multiple injectable
 products: 聚多卡醇注射液 (built from scratch, v1→v2), 骨化三醇注射液 (a full Stage 6
-revision v5→v6), and 注射用乳糖酸红霉素 (Stage 6 revision to v4). The 骨化三醇 v5→v6
+revision v5→v6), and 注射用乳糖酸红霉素 (Stage 6 revisions v4→v8). The 骨化三醇 v5→v6
 revision — six action classes (material source backfill / font normalization / chapter
 consolidation / matrix readability / matrix trimming / zero-regression verification) — is
 captured as a worked retrospective in `references/case_study_gsc_v6.md`.
@@ -72,11 +78,19 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
 - Decision: core subsections quoted in full; instrument/reagent/reference-standard lines
   become one-line index rows.
 
-### Stage 3 — Appendix G 检验物料清单 (备料核对清单)
+### Stage 3 — 检验物料清单 (备料核对清单；默认位于第 2 章 2.2)
+> Default placement is section 2.2 (right after the 一页速览), titled
+> `2.2 检验物料清单（备料核对清单）★` with `2.2.1 用途与口径` +
+> `2.2.2 检验项 × 物料矩阵`. A standalone 附录 G is a historical variant.
+
 - Model materials with `references/materials_data_model.md`: six categories
   (对照品 / 试剂试液 / 供试品 / 色谱柱 / 仪器 / 消耗品器皿), IDs `RP-/RGT-/SMP-/COL-/INS-/CON-`.
-- Generate the six G.3.x sub-tables with `add_grid_table_fixed` (fixed layout, exact
-  column widths, cross-page repeating header for long tables only).
+- Generate the material detail as either six sub-tables (`add_grid_table_fixed`, fixed
+  layout, cross-page repeating header for long tables ONLY) or — current default —
+  fold each item's 名称/规格/关键属性 directly into the 检验项×物料 matrix cells via
+  `build_matrix(cell_mode="name_spec")` + `set_cell_multiline`, dropping the separate
+  detail table and the in-cell codes.
+
 - Add a ✔ 核对 column (empty cell + header "√"); do NOT use ☐/☑ glyphs or w:sdt controls.
 - Keep a `build_matrix()` that derives the 检验项×物料 matrix from the material `items`
   field — never hand-maintain two copies. For 完整名称（编号） cells, 中文全称（缩写）
@@ -213,13 +227,13 @@ captured as a worked retrospective in `references/case_study_gsc_v6.md`.
   breaks), `add_sop_quote_block`, `add_header_footer(doc, header_text)` (页眉描述文字 +
   页脚 PAGE/NUMPAGES 域), `_add_field` / `_split_numbered` 内部助手,
   `add_landscape_section` / `restore_portrait`, shading, `set_cjk` (rFonts 四属性 +
-  `w:sz`/`w:szCs` 成对；字体族由 `CN_FONT` / `BODY_FONT` / `ASCII_FONT` 参数化，
-  默认中文宋体 + 英文 Times New Roman). All document-mutating functions take the `doc`
-  object as first argument.
+  `w:sz`/`w:szCs` 成对；字体族由 `CN_FONT` / `BODY_FONT` / `ASCII_FONT` / `HEADER_FONT`
+  参数化，默认中文宋体 + 英文 Times New Roman、页眉微软雅黑；成品正文默认 9.5pt、
+  页眉 8pt). All document-mutating functions take the `doc` object as first argument.
 - `deviation_cases_template.py` — 偏差/OOS 案例数据源模板 + 聚多卡醇 4 例脱敏参考集；
   导出 `DEVIATION_CASES` / `CASE_BY_CODE` / `COMMON_PATTERNS` / `STABILITY_PLACEMENT_RULE` /
   `MANUAL_REVIEW_NOTES`，以及 `attach_case(key_text, case_code)` 把案例关键点挂到卡内红框。
-- `materials_template.py` — 附录 G 物料清单模板（六类，ID 前缀 RP-/RGT-/SMP-/COL-/INS-/CON-），
+- `materials_template.py` — 检验物料清单模板（默认第 2 章 2.2，六类，ID 前缀 RP-/RGT-/SMP-/COL-/INS-/CON-），
   含 `build_matrix(cats=None, legacy=False, cell_mode=None)`：`cell_mode` 控制每格写法——
   `"name_code"`（默认，完整名称（编号）+ 顿号）/ `"name_spec"`（名称 / 规格关键属性，
   每条独立成行，供「把明细总表嵌进矩阵、取消代号」口径）/ `"code"` / `"legacy"`；

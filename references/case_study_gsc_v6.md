@@ -69,9 +69,11 @@
 - 走 `patch_existing_manual.py --normalize-fonts --font-mode all-song`：
   全 run 后处理、`rPr/rFonts` 四属性（ascii/hAnsi/cs/eastAsia）齐全、`w:sz` 与 `w:szCs` 成对、
   空 run 跳过、Unicode 下标（MgSO₄/V₁）替换、窄列（<5cm、7pt）去加粗。
-- **本次妥协**：成品采用「全宋体最小改动」（`all-song`），**未**在成品上验证
-  中文宋体 + 英文 TNR 的分离版（`cjk-split`）。
-- **已知 TODO**：下次生成/修订可改用 `--font-mode cjk-split` 并目视确认无重影/豆腐块。
+- **本次妥协**：成品采用「全宋体最小改动」（`all-song`），属该品种当次的历史选择；v6 当时未对
+  分离版做成品验证（历史事实，非当前状态）。
+- **后续进展（更新于 2026-11）**：中文宋体 + 英文 TNR 的分离版（`cjk-split`）已在**注射用乳糖酸红霉素
+  v8** 成品上落地并目视确认（无重影/豆腐块），现为默认配方。新生成/新修订直接用 `--font-mode
+  cjk-split`；`all-song` 仅用于兼容既有全宋体成品。此处保留 v6 当时的原始事实，不改写历史记述。
 
 ---
 
@@ -161,7 +163,7 @@ allowed_cells 白名单仅放：
 
 ## 9. 已知债务与 TODO（仅记录，不改技能脚本）
 
-- 字体 all-song 妥协 → 下次可 `--font-mode cjk-split` 落地并目视验证。
+- 字体 all-song 妥协是 v6 历史口径；`cjk-split` 已在红霉素 v8 成品落地验证并为默认，此项已闭环。
 - 工作区 `build_gsc_v5.py` / `data_gsc_v5.py` 仍是 v5 代号版，重跑会回退 → 禁止重跑；
   如需 v6 重生成应另写 v6 脚本（待办）。
 - 早期曾有一次「v6 字体统一版」尝试并回退删除，与本轮正式 v6 **无关**，避免混淆。

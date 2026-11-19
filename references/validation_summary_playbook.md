@@ -44,7 +44,7 @@
 
 ### 4.3 列宽合计 = 9638 twips = 17cm
 A4 + 2cm 边距 → 纵向版心 17cm = 9638 twips。表格 `tblW`、`tblGrid/gridCol`、每个 `tcW` 三者之和必须相等且 = 9638，
-**超出会出血/被截断**。横向宽表放 landscape section（版心 25.7cm = 14552 twips）。
+**超出会出血/被截断**。横向宽表放 landscape section（版心 25.7cm = 14570 twips）。
 脚本对每个表 `assert sum(col_widths) == required_total_twips`（默认 9638）。
 
 ### 4.4 OOXML 元素顺序（定宽表）
